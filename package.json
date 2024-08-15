@@ -1,0 +1,16 @@
+{
+  "name": "foodwise",
+  "version": "1.0.0",
+  "description": "Food Wise enables people to manage their health and monitor their consumption",
+  "main": "index.js",
+  "author": "Conrad Koh",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "yarn workspaces run dev"
+  },
+  "workspaces": [
+    "apps/*",
+    "services/*"
+  ]
+}
