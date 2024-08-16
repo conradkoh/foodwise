@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { internalAction, internalMutation } from './_generated/server';
+import { telegramPayloadConvexSchema } from '@/utils/telegram';
 
 // registerWebhook registers the webhook with telegram.
 // run this from the convex console to register the webhook
@@ -30,7 +31,7 @@ export const registerWebhook = internalAction({
 //_writeMessage writes a message to the database
 export const _writeMessage = internalMutation({
   args: {
-    rawPayload: v.any(),
+    rawPayload: telegramPayloadConvexSchema,
   },
   handler: async (ctx, args) => {
     await ctx.db.insert('messages', {
