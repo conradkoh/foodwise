@@ -1,11 +1,7 @@
 import { TelegramMessageBuilder } from '@/utils/telegram/classes/TelegramMessageBuilder';
-import {
-  TelegramMessageOutgoing,
-  telegramMessageOutgoingConvexSchema,
-} from '@/utils/telegram/types';
+import { telegramMessageOutgoingConvexSchema } from '@/utils/telegram/types';
 import { internal } from 'convex/_generated/api';
 import { ActionCtx, internalAction } from 'convex/_generated/server';
-import { v } from 'convex/values';
 
 /**
  * Register webhook with telegram.
