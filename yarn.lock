@@ -251,6 +251,46 @@
   resolved "https://registry.yarnpkg.com/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.0.tgz#3188bcb273a414b0d215fd22a58540b989b9409a"
   integrity sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==
 
+"@oven/bun-darwin-aarch64@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-darwin-aarch64/-/bun-darwin-aarch64-1.1.24.tgz#0d7e1d60becc89389866f11b36c1ed0d08562eda"
+  integrity sha512-tT4omX5C9X4tlS0uLiypb6uECTbKjg3/dRNBjAROyL8tLJdndNR0SksfS7IQz0vD4zzifk98ZEsDML4gt+LFgQ==
+
+"@oven/bun-darwin-x64-baseline@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-darwin-x64-baseline/-/bun-darwin-x64-baseline-1.1.24.tgz#64a623c39f29485c0846069ea651b47fe7379ee4"
+  integrity sha512-jp7VhUDNA58scDHF8CKSClUdeWmWGiCWwxcrqs/81jNiARKCb+wjy+nEXWjc8KOB45NAhGaB3BBbl6EM3GzIDw==
+
+"@oven/bun-darwin-x64@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-darwin-x64/-/bun-darwin-x64-1.1.24.tgz#d31691ad1b200528e5f758b6bfe1472f3c823920"
+  integrity sha512-jSt9jL0mE1zh/8OEWR6fdnGaDF8iWnMwd2a4N2qRuWcr8/QCEjvfK4iJPaJ6f8W06z01CxO5+O4pMF94s6z3pw==
+
+"@oven/bun-linux-aarch64@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-linux-aarch64/-/bun-linux-aarch64-1.1.24.tgz#7a72eb7aeb3720f9aecb536b7a3ae1c4932acd83"
+  integrity sha512-yw/OHSEqygnWJelfuXJP3hSjNVzJ7adxL/Z9vxQPMYi7c7zdfMiggoH9V4U1VIcggfoMH1Gfc5lVpKowuJsSBA==
+
+"@oven/bun-linux-x64-baseline@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-linux-x64-baseline/-/bun-linux-x64-baseline-1.1.24.tgz#1186d8f7dfb8814ffbdb4f5cb8344273d71ed2fe"
+  integrity sha512-L2p9MOY7ug1RzaMYcAknEefMPw+w0LPR9qv780G/SO0uBe1JGl3IzO6/hsPnjj65uT/nNuR+YJXeZbH6p1iwfQ==
+
+"@oven/bun-linux-x64@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-linux-x64/-/bun-linux-x64-1.1.24.tgz#1139f261a9e56d3908aee85d31f051cb8ba43590"
+  integrity sha512-U8j716mLJFG5KsFypWgE+uNULo3Y5R0tgP7vEPnPAL4lvwt7IM4Jg1LyxzcEm0jDVrJU3TNaYsu4bsxVVAxmSg==
+
+"@oven/bun-windows-x64-baseline@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-windows-x64-baseline/-/bun-windows-x64-baseline-1.1.24.tgz#708c1229a673bb63e5bc1baba39129ac36c88a7d"
+  integrity sha512-Yznr5LJb8Q3MoyG9dM3UosnJSHwOe8AL1AA9fpkVC+TdTl6lmXxjk6JUsE4THQDloRYGN9eqpLLJbK7O6t0aUQ==
+
+"@oven/bun-windows-x64@1.1.24":
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/@oven/bun-windows-x64/-/bun-windows-x64-1.1.24.tgz#aba6947f46157d9de64671e1c32df1d9eeb22ad2"
+  integrity sha512-8DWCMsavfxAYuJRMRV5M8Tkhttjh/vJo9DEIEBVOfKbKQHoqOnlmXgK7FBPNTqyVzKpmv+W80bTrRoxlnTnk7A==
+
 "@rollup/rollup-android-arm-eabi@4.20.0":
   version "4.20.0"
   resolved "https://registry.yarnpkg.com/@rollup/rollup-android-arm-eabi/-/rollup-android-arm-eabi-4.20.0.tgz#c3f5660f67030c493a981ac1d34ee9dfe1d8ec0f"
@@ -459,6 +499,20 @@ asynckit@^0.4.0:
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/asynckit/-/asynckit-0.4.0.tgz#c79ed97f7f34cb8f2ba1bc9790bcc366474b4b79"
   integrity sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==
+
+bun@^1.1.24:
+  version "1.1.24"
+  resolved "https://registry.yarnpkg.com/bun/-/bun-1.1.24.tgz#c27f5f7c9942836396b834029c7846b44a487619"
+  integrity sha512-vZt5zNVaoNTSlNprdVdQVZInBcGC2QSik6o9ZsMzuYiiUEAEqpRwwMXAYDUN85mt2FNnsGvmk/8xVlUXS7IzEw==
+  optionalDependencies:
+    "@oven/bun-darwin-aarch64" "1.1.24"
+    "@oven/bun-darwin-x64" "1.1.24"
+    "@oven/bun-darwin-x64-baseline" "1.1.24"
+    "@oven/bun-linux-aarch64" "1.1.24"
+    "@oven/bun-linux-x64" "1.1.24"
+    "@oven/bun-linux-x64-baseline" "1.1.24"
+    "@oven/bun-windows-x64" "1.1.24"
+    "@oven/bun-windows-x64-baseline" "1.1.24"
 
 cac@^6.7.14:
   version "6.7.14"
