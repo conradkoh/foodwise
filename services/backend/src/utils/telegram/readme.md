@@ -2,6 +2,20 @@
 
 ## Usage
 
+## Generate a new telegram secret
+
+1. Generate a new secret token
+
+```sh
+yarn bun src/utils/telegram/scripts/generate-webhook-secret.tss
+```
+
+2. Set the secret token in the environment variables in your convex console
+
+```sh
+yarn  convex env set TELEGRAM_WEBHOOK_SECRET <your-secret-token>
+```
+
 ## Registering the webhook
 
 1. Implement a http endpoint to handle the webhook
