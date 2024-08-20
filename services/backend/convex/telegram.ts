@@ -1,5 +1,4 @@
-import { v } from 'convex/values';
-import { internalAction, internalMutation } from './_generated/server';
+import { internalMutation } from './_generated/server';
 import {
   registerWebhookAction,
   sendMessageAction,
