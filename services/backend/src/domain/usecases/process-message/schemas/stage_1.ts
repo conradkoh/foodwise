@@ -64,7 +64,10 @@ const estimateCaloriesAction = baseAction.extend({
     .describe("Estimate the calories for the user's meal."),
   meal: z.string().describe('The name or description of the meal'),
   estimatedCalories: z
-    .number()
+    .object({
+      units: z.literal('kcal'),
+      value: z.number().describe('The estimated calorie content of the meal'),
+    })
     .describe('The estimated calorie content of the meal'),
   unit: z.string().describe('The unit of calorie measurement'),
 });

@@ -82,6 +82,20 @@ Extract user's activity information and estimate calorie burn information if pro
           );
           break;
         }
+        case INTENTS.GET_GENERAL_ADVICE: {
+          actionsTaken.push(`Received advice: ${action.advice}`);
+          break;
+        }
+        case INTENTS.ESTIMATE_CALORIES: {
+          actionsTaken.push(
+            `Estimated calories: ${action.estimatedCalories.value} ${action.estimatedCalories.units}`
+          );
+          break;
+        }
+        default: {
+          // exhaustive switch
+          const _: never = action;
+        }
       }
     }
 
