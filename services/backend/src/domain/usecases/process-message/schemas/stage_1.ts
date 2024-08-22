@@ -1,57 +1,86 @@
 import { INTENTS } from '@/domain/usecases/process-message/intent';
 import { z } from 'zod';
-export type Stage1Output = z.infer<typeof stage1Output_zodSchema>;
-export const stage1Output_zodSchema = z.array(
-  z.object({
-    intent: z.enum([
+
+const baseAction = z.object({
+  intent: z
+    .enum([
       INTENTS.GET_GENERAL_ADVICE,
       INTENTS.ESTIMATE_CALORIES,
       INTENTS.RECORD_WEIGHT,
       INTENTS.RECORD_MEALS_AND_CALORIES,
       INTENTS.RECORD_ACTIVITIES_AND_BURN,
-    ]),
-    result: z.object({
-      [INTENTS.GET_GENERAL_ADVICE]: z.string().optional(),
-      [INTENTS.ESTIMATE_CALORIES]: z
-        .object({
-          calories: z.object({
-            units: z.literal('kcal'),
-            value: z.number().optional(),
-          }),
-        })
-        .optional(),
-      [INTENTS.RECORD_WEIGHT]: z.object({
-        weight: z.object({
-          units: z.literal('kg'),
-          value: z.number().optional(),
-        }),
-      }),
-      [INTENTS.RECORD_MEALS_AND_CALORIES]: z
-        .object({
-          meals: z.array(
-            z.object({
-              name: z.string(),
-              description: z.string().optional(),
-              calories: z.object({
-                units: z.literal('kcal'),
-                value: z.number().optional(),
-              }),
-            })
-          ),
-        })
-        .optional(),
-      [INTENTS.RECORD_ACTIVITIES_AND_BURN]: z.object({
-        activity: z.array(
-          z.object({
-            name: z.string(),
-            description: z.string().optional(),
-            calories: z.object({
-              units: z.literal('kcal'),
-              value: z.number().optional(),
-            }),
-          })
-        ),
-      }),
-    }),
-  })
-);
+    ])
+    .describe('The intent of the action'),
+});
+
+const weightAction = baseAction.extend({
+  intent: z
+    .literal(INTENTS.RECORD_WEIGHT)
+    .describe("Extract user's weight information if provided."),
+  weight: z.object({
+    value: z.number().describe('The weight value'),
+    units: z.literal('kg').describe('The unit of weight measurement'),
+  }),
+});
+
+const mealAction = baseAction.extend({
+  intent: z
+    .literal(INTENTS.RECORD_MEALS_AND_CALORIES)
+    .describe(
+      "Extract user's meal and estimate calorie intake information if provided."
+    ),
+  meal: z.string().describe('The name or description of the meal'),
+  calories: z.object({
+    value: z.number().describe('The calorie content of the meal'),
+    units: z.literal('kcal').describe('The unit of calorie measurement'),
+  }),
+});
+
+const activityAction = baseAction.extend({
+  intent: z
+    .literal(INTENTS.RECORD_ACTIVITIES_AND_BURN)
+    .describe(
+      "Extract user's activity information and estimate calorie burn information if provided."
+    ),
+  activity: z.string().describe('The name or description of the activity'),
+  caloriesBurned: z.object({
+    value: z.number().describe('The estimated calorie burn'),
+    units: z.literal('kcal').describe('The unit of calorie burn measurement'),
+  }),
+});
+
+const generalAdviceAction = baseAction.extend({
+  intent: z
+    .literal(INTENTS.GET_GENERAL_ADVICE)
+    .describe(
+      'Respond with clear precise advice, favoring numbers and verified data backed by research.'
+    ),
+  advice: z.string().describe('The general health advice'),
+});
+
+const estimateCaloriesAction = baseAction.extend({
+  intent: z
+    .literal(INTENTS.ESTIMATE_CALORIES)
+    .describe("Estimate the calories for the user's meal."),
+  meal: z.string().describe('The name or description of the meal'),
+  estimatedCalories: z
+    .number()
+    .describe('The estimated calorie content of the meal'),
+  unit: z.string().describe('The unit of calorie measurement'),
+});
+
+export const stage1Output_zodSchema = z.object({
+  actions: z
+    .array(
+      z.union([
+        weightAction,
+        mealAction,
+        activityAction,
+        generalAdviceAction,
+        estimateCaloriesAction,
+      ])
+    )
+    .describe("List of actions to be taken based on the user's input"),
+});
+
+export type Stage1Output = z.infer<typeof stage1Output_zodSchema>;

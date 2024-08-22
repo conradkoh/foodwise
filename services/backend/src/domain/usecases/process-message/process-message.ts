@@ -1,9 +1,27 @@
 import { INTENTS } from '@/domain/usecases/process-message/intent';
 import { stage1Output_zodSchema } from '@/domain/usecases/process-message/schemas/stage_1';
+import { stage2Output_zodSchema } from '@/domain/usecases/process-message/schemas/stage_2';
 import { openAIParse } from '@/utils/openai';
 
 export const processMessage =
-  (deps: {}) => async (params: { inputText: string }) => {
+  (deps: {
+    recordUserWeight: (weight: { value: number; units: 'kg' }) => Promise<void>;
+    recordUserMealAndCalories: (v: {
+      meal: string;
+      calories: {
+        value: number;
+        units: 'kcal';
+      };
+    }) => Promise<void>;
+    recordActivityAndBurn: (v: {
+      activity: string;
+      caloriesBurned: {
+        value: number;
+        units: 'kcal';
+      };
+    }) => Promise<void>;
+  }) =>
+  async (params: { inputText: string }) => {
     const systemPrompt = (CURRENT_STAGE: 'STAGE_1' | 'STAGE_2') => `
 # HealthBot Agent Overview
 The HealthBot system processes a user's message and determines the steps to take. There are 2 stages
@@ -40,5 +58,46 @@ Extract user's activity information and estimate calorie burn information if pro
       },
     });
 
-    return stage1Output;
+    const actionsTaken: string[] = [];
+    for (const action of stage1Output.response.data.actions) {
+      switch (action.intent) {
+        case INTENTS.RECORD_WEIGHT: {
+          await deps.recordUserWeight(action.weight);
+          actionsTaken.push(
+            `Recorded weight: ${action.weight.value} ${action.weight.units}`
+          );
+          break;
+        }
+        case INTENTS.RECORD_MEALS_AND_CALORIES: {
+          await deps.recordUserMealAndCalories(action);
+          actionsTaken.push(
+            `Recorded meal: ${action.meal} (${action.calories.value} ${action.calories.units})`
+          );
+          break;
+        }
+        case INTENTS.RECORD_ACTIVITIES_AND_BURN: {
+          await deps.recordActivityAndBurn(action);
+          actionsTaken.push(
+            `Recorded activity: ${action.activity} (${action.caloriesBurned.value} ${action.caloriesBurned.units} burned)`
+          );
+          break;
+        }
+      }
+    }
+
+    // Stage 2 processing
+    const stage2Output = await openAIParse({
+      systemPrompt: systemPrompt('STAGE_2'),
+      text: JSON.stringify({ userInput: params.inputText, actionsTaken }),
+      schema: {
+        name: 'user_health_information_stage_2',
+        zod: stage2Output_zodSchema,
+      },
+    });
+
+    return {
+      stage1Output,
+      stage2Output,
+      actionsTaken,
+    };
   };

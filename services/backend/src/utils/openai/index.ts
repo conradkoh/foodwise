@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import zodToJsonSchema from 'zod-to-json-schema';
+// T if undefined, then it will be never. used to make sure that the schema is not undefined
 
 export const openAIParse = async <T extends z.ZodType>(p: {
   systemPrompt: string;
