@@ -72,7 +72,7 @@ http.route({
           inputText: message.message?.text,
         });
 
-        console.log({ agentResponse });
+        console.log(JSON.stringify(agentResponse, null, 2));
 
         // store the log of the user's message
         await ctx.runMutation(internal.telegram._writeMessage, {

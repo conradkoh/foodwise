@@ -26,7 +26,7 @@ export const processMessage =
 # HealthBot Agent Overview
 The HealthBot system processes a user's message and determines the steps to take. There are 2 stages
 1. STAGE_1: Process the user's message and return the list of actions to take.
-2. STAGE_2: Review the actions taken and return a response to the user.
+2. STAGE_2: Review the actions taken and return a concise response to the user.
 
 CURRENT STAGE: ${CURRENT_STAGE}
 
@@ -58,46 +58,34 @@ Extract user's activity information and estimate calorie burn information if pro
       },
     });
 
-    const actionsTaken: string[] = [];
-    for (const action of stage1Output.response.data.actions) {
-      switch (action.intent) {
-        case INTENTS.RECORD_WEIGHT: {
-          await deps.recordUserWeight(action.weight);
-          actionsTaken.push(
-            `Recorded weight: ${action.weight.value} ${action.weight.units}`
-          );
-          break;
+    const actionsTaken = await Promise.all(
+      stage1Output.response.data.actions.map(async (action) => {
+        switch (action.intent) {
+          case INTENTS.RECORD_WEIGHT: {
+            await deps.recordUserWeight(action.weight);
+            return `Recorded weight: ${action.weight.value} ${action.weight.units}`;
+          }
+          case INTENTS.RECORD_MEALS_AND_CALORIES: {
+            await deps.recordUserMealAndCalories(action);
+            return `Recorded meal: ${action.meal} (${action.calories.value} ${action.calories.units})`;
+          }
+          case INTENTS.RECORD_ACTIVITIES_AND_BURN: {
+            await deps.recordActivityAndBurn(action);
+            return `Recorded activity: ${action.activity} (${action.caloriesBurned.value} ${action.caloriesBurned.units} burned)`;
+          }
+          case INTENTS.GET_GENERAL_ADVICE: {
+            return `Received advice: ${action.advice}`;
+          }
+          case INTENTS.ESTIMATE_CALORIES: {
+            return `Estimated calories: ${action.estimatedCalories.value} ${action.estimatedCalories.units}`;
+          }
+          default: {
+            // exhaustive switch
+            const _: never = action;
+          }
         }
-        case INTENTS.RECORD_MEALS_AND_CALORIES: {
-          await deps.recordUserMealAndCalories(action);
-          actionsTaken.push(
-            `Recorded meal: ${action.meal} (${action.calories.value} ${action.calories.units})`
-          );
-          break;
-        }
-        case INTENTS.RECORD_ACTIVITIES_AND_BURN: {
-          await deps.recordActivityAndBurn(action);
-          actionsTaken.push(
-            `Recorded activity: ${action.activity} (${action.caloriesBurned.value} ${action.caloriesBurned.units} burned)`
-          );
-          break;
-        }
-        case INTENTS.GET_GENERAL_ADVICE: {
-          actionsTaken.push(`Received advice: ${action.advice}`);
-          break;
-        }
-        case INTENTS.ESTIMATE_CALORIES: {
-          actionsTaken.push(
-            `Estimated calories: ${action.estimatedCalories.value} ${action.estimatedCalories.units}`
-          );
-          break;
-        }
-        default: {
-          // exhaustive switch
-          const _: never = action;
-        }
-      }
-    }
+      })
+    );
 
     // Stage 2 processing
     const stage2Output = await openAIParse({
