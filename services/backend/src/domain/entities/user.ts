@@ -15,6 +15,7 @@ const user_zodSchema = z.object({
     lastName: z.optional(z.string()),
     username: z.optional(z.string()),
   }),
+  timezone: z.optional(z.string()),
 });
 
 // convex

@@ -1,12 +1,10 @@
 import { httpRouter } from 'convex/server';
-// import { onMessage } from './telegram';
 import { httpAction } from './_generated/server';
 import { internal } from './_generated/api';
 import { parseTelegramPayload, sendMessage } from '@/utils/telegram';
 import { processMessage } from '@/domain/usecases/process-message';
 import { MessageUsageMetric } from '@/domain/entities/message';
 
-//NOTE: these are deploy on convex.site and NOT convex.cloud
 const http = httpRouter();
 
 http.route({
@@ -48,6 +46,7 @@ http.route({
             },
           });
         }
+
         const timestamp = new Date().getTime();
 
         let response = {
@@ -80,6 +79,12 @@ http.route({
                 activity,
                 caloriesBurned,
                 timestamp,
+              });
+            },
+            setUserTimezone: async (timezone) => {
+              await ctx.runMutation(internal.user._setUserTimezone, {
+                userId: user._id,
+                timezone,
               });
             },
           })({

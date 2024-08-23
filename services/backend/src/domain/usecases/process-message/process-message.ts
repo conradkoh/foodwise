@@ -28,6 +28,7 @@ export const processMessage =
         units: 'kcal';
       };
     }) => Promise<void>;
+    setUserTimezone: (timezone: string) => Promise<void>;
   }) =>
   async (params: {
     inputText: string;
@@ -76,6 +77,9 @@ Extract user's meal and estimate calorie intake information if provided.
 
 ### ENUM: ${INTENTS.RECORD_ACTIVITIES_AND_BURN}
 Extract user's activity information and estimate calorie burn information if provided.
+
+### ENUM: ${INTENTS.SET_TIMEZONE}
+Set the user's timezone. The timezone should be in a standard format (e.g., 'America/New_York', 'Europe/London').
 `;
     let intermediates: {
       stage1Output?: z.infer<typeof stage1Output_zodSchema>;
@@ -132,6 +136,11 @@ Extract user's activity information and estimate calorie burn information if pro
               actionsTaken.push(
                 `Estimated calories: ${action.estimatedCalories.value} ${action.estimatedCalories.units}`
               );
+              break;
+            }
+            case INTENTS.SET_TIMEZONE: {
+              await deps.setUserTimezone(action.timezone);
+              actionsTaken.push(`Set timezone: ${action.timezone}`);
               break;
             }
             default: {

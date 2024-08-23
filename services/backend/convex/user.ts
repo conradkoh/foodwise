@@ -4,7 +4,7 @@ import {
   userMeal_convexSchema,
   userWeight_convexSchema,
 } from '@/domain/entities/user';
-import { internalMutation, internalQuery } from 'convex/_generated/server';
+import { internalMutation, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
 
 export const _getTelegramUser = internalQuery({
@@ -50,5 +50,15 @@ export const _recordActivityAndBurn = internalMutation({
   args: userActivity_convexSchema,
   handler: async (ctx, args) => {
     await ctx.db.insert('userActivity', args);
+  },
+});
+
+export const _setUserTimezone = internalMutation({
+  args: {
+    userId: v.id('user'),
+    timezone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { timezone: args.timezone });
   },
 });

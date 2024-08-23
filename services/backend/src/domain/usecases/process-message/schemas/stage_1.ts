@@ -72,6 +72,15 @@ const estimateCaloriesAction = baseAction.extend({
   unit: z.string().describe('The unit of calorie measurement'),
 });
 
+const setTimezoneAction = baseAction.extend({
+  intent: z
+    .literal(INTENTS.SET_TIMEZONE)
+    .describe(
+      "Set the user's timezone. The timezone should be in a standard format (e.g., 'America/New_York', 'Europe/London')."
+    ),
+  timezone: z.string().describe('The timezone in a standard format'),
+});
+
 export const stage1Output_zodSchema = z.object({
   actions: z
     .array(
@@ -81,6 +90,7 @@ export const stage1Output_zodSchema = z.object({
         activityAction,
         generalAdviceAction,
         estimateCaloriesAction,
+        setTimezoneAction,
       ])
     )
     .describe("List of actions to be taken based on the user's input"),
