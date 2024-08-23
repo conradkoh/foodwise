@@ -4,6 +4,7 @@ import { httpAction } from './_generated/server';
 import { internal } from './_generated/api';
 import { parseTelegramPayload, sendMessage } from '@/utils/telegram';
 import { processMessage } from '@/domain/usecases/process-message';
+import { MessageUsageMetric } from '@/domain/entities/message';
 
 //NOTE: these are deploy on convex.site and NOT convex.cloud
 const http = httpRouter();
@@ -38,49 +39,136 @@ http.route({
         // create user if not found
         if (!user) {
           user = await ctx.runMutation(internal.user._createUser, {
-            telegramUserId: userId,
+            type: 'telegram',
+            telegram: {
+              userId: userId,
+              firstName: message.message?.from.first_name,
+              lastName: message.message?.from.last_name,
+              username: message.message?.from.username,
+            },
           });
         }
         const timestamp = new Date().getTime();
 
-        //process the message
-        const agentResponse = await processMessage({
-          recordUserWeight: async (weight) => {
-            await ctx.runMutation(internal.user._recordUserWeight, {
-              userId: user._id,
-              weight,
-              timestamp,
-            });
-          },
-          recordUserMealAndCalories: async ({ meal, calories }) => {
-            await ctx.runMutation(internal.user._recordUserMealAndCalories, {
-              userId: user._id,
-              meal,
-              calories,
-              timestamp,
-            });
-          },
-          recordActivityAndBurn: async ({ activity, caloriesBurned }) => {
-            await ctx.runMutation(internal.user._recordActivityAndBurn, {
-              userId: user._id,
-              activity,
-              caloriesBurned,
-              timestamp,
-            });
-          },
-        })({
-          inputText: message.message?.text,
-        });
+        let response = {
+          isValid: false,
+          intermediates: null as any | null,
+          value: 'Failed to process message',
+        };
+        let usageMetrics: MessageUsageMetric[] | undefined = undefined;
+        try {
+          //process the message
+          const agentResponse = await processMessage({
+            recordUserWeight: async (weight) => {
+              await ctx.runMutation(internal.user._recordUserWeight, {
+                userId: user._id,
+                weight,
+                timestamp,
+              });
+            },
+            recordUserMealAndCalories: async ({ meal, calories }) => {
+              await ctx.runMutation(internal.user._recordUserMealAndCalories, {
+                userId: user._id,
+                meal,
+                calories,
+                timestamp,
+              });
+            },
+            recordActivityAndBurn: async ({ activity, caloriesBurned }) => {
+              await ctx.runMutation(internal.user._recordActivityAndBurn, {
+                userId: user._id,
+                activity,
+                caloriesBurned,
+                timestamp,
+              });
+            },
+          })({
+            inputText: message.message?.text,
+          });
+          // update usage metrics
+          usageMetrics = [...agentResponse.usageMetrics];
+          // update response
+          switch (agentResponse.isError) {
+            case true: {
+              response = {
+                isValid: false,
+                value: 'Failed to process message',
+                intermediates: agentResponse.intermediates,
+              };
+              return new Response(null, { status: 200 });
+            }
+            case false: {
+              response = {
+                isValid: true,
+                value: agentResponse.intermediates.stage2Output?.response,
+                intermediates: agentResponse.intermediates,
+              };
+              break;
+            }
+          }
 
-        console.log(JSON.stringify(agentResponse, null, 2));
+          console.log(JSON.stringify(agentResponse, null, 2));
+        } catch (error) {
+          console.error('failed to process message.', error);
+          response = {
+            isValid: false,
+            value: 'Failed to process message',
+            intermediates: null as any | null,
+          };
+        }
 
         // store the log of the user's message
-        await ctx.runMutation(internal.telegram._writeMessage, {
-          rawPayload: message,
-        });
+        try {
+          await ctx.runMutation(internal.message._write, {
+            source: 'telegram',
+            status: response.isValid ? 'processed' : 'failed',
+            rawPayload: message,
+            intermediates: response.intermediates,
+            response: response.value,
+            usageMetrics,
+            totalCostEstimated: usageMetrics?.reduce(
+              (state, metric) => {
+                // aggregate by currency
+                let stateForCurrency: { currency: 'USD'; value: number } =
+                  state.index[metric.openAI.cost.currency];
+
+                // init state for currency if not available
+                if (!stateForCurrency) {
+                  let val = {
+                    currency: metric.openAI.cost.currency,
+                    value: 0,
+                  };
+                  state.index[metric.openAI.cost.currency] = val; //set in index
+                  state.result.push(val);
+                  stateForCurrency = val;
+                }
+                // start processing kinds metrics
+                switch (metric.type) {
+                  case 'openai': {
+                    // increment total
+                    stateForCurrency.value += metric.openAI.cost.total;
+                    break;
+                  }
+                  default: {
+                    // exhaustive switch for type
+                    const _: never = metric.type;
+                  }
+                }
+                return state;
+              },
+              {
+                index: {} as Record<'USD', { currency: 'USD'; value: number }>,
+                result: [] as { currency: 'USD'; value: number }[],
+              }
+            ).result,
+          });
+        } catch (error) {
+          console.error('failed to write message to db', error);
+        }
+
         //Send a message to the user
         await sendMessage(ctx, { chatId }, async (tg) => {
-          return [tg.text(agentResponse.stage2Output.response.data.response)];
+          return [tg.text(response.value)];
         });
       } catch (error) {
         console.error('failed to process message.', error);

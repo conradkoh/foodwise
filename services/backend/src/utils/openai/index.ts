@@ -35,7 +35,7 @@ export const openAIParse = async <T extends z.ZodType>(p: {
   const contentRaw = chatCompletion.choices[0].message.content;
   if (!contentRaw) throw new Error('Null response from OpenAI');
 
-  const res: z.infer<typeof schema> = JSON.parse(contentRaw);
+  const res: z.infer<typeof schema> = schema.parse(JSON.parse(contentRaw));
 
   // detect api utilization and estimate cost
   const costEstimates = {
@@ -43,10 +43,16 @@ export const openAIParse = async <T extends z.ZodType>(p: {
     output: (chatCompletion.usage?.completion_tokens || 0) * (10 / 1000000),
   };
   const usage = {
-    ...chatCompletion.usage,
-    costEstimatesUSD: {
-      ...costEstimates,
+    tokens: {
+      prompt: chatCompletion.usage?.prompt_tokens || 0,
+      completion: chatCompletion.usage?.completion_tokens || 0,
+      total: chatCompletion.usage?.total_tokens || 0,
+    },
+    cost: {
+      input: costEstimates.input,
+      output: costEstimates.output,
       total: costEstimates.input + costEstimates.output,
+      currency: 'USD' as const,
     },
   };
   return {
