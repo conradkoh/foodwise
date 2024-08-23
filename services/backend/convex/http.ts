@@ -87,6 +87,9 @@ http.route({
                 timezone,
               });
             },
+            getUserTimezone: async () => {
+              return user.timezone;
+            },
           })({
             inputText: message.message?.text,
           });

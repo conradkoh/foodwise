@@ -28,6 +28,7 @@ export const processMessage =
         units: 'kcal';
       };
     }) => Promise<void>;
+    getUserTimezone: () => Promise<string | undefined>;
     setUserTimezone: (timezone: string) => Promise<void>;
   }) =>
   async (params: {
@@ -80,6 +81,7 @@ Extract user's activity information and estimate calorie burn information if pro
 
 ### ENUM: ${INTENTS.SET_TIMEZONE}
 Set the user's timezone. The timezone should be in a standard format (e.g., 'America/New_York', 'Europe/London').
+
 `;
     let intermediates: {
       stage1Output?: z.infer<typeof stage1Output_zodSchema>;
@@ -90,6 +92,38 @@ Set the user's timezone. The timezone should be in a standard format (e.g., 'Ame
     let actionsTaken: string[] = [];
 
     try {
+      // Handle /start command
+      if (params.inputText.trim().toLowerCase() === '/start') {
+        const timezone = await deps.getUserTimezone();
+        let response = `Welcome! To get started, please set your timezone. You can say something like "set my timezone to Singapore".`;
+        if (timezone) {
+          response = `
+You're all good to go! 👍🏼
+
+In this chat, I can help you with a variety of tasks to help you keep track of your health!
+
+Here are some things I can help with
+  1. Keep track of your weight ⚖️
+  2. Keep track of your meals and calories 🥗🌯
+  3. Keep track of your activities and calorie burn 🏃🏻‍♂️🏃🏽‍♀️🔥
+  4. Set your timezone 🕥
+
+I can also provide you with general advice and estimate calories for your meals.
+`.trim();
+        }
+        return {
+          isError: false,
+          intermediates: {
+            stage1Output: { actions: [] },
+            stage2Output: {
+              response,
+            },
+          },
+          actionsTaken: ['Handled /start command'],
+          usageMetrics: [],
+        };
+      }
+
       const {
         response: { data: stage1Output },
         usage: stage1Usage,
@@ -143,6 +177,7 @@ Set the user's timezone. The timezone should be in a standard format (e.g., 'Ame
               actionsTaken.push(`Set timezone: ${action.timezone}`);
               break;
             }
+
             default: {
               // exhaustive switch
               const _: never = action;
