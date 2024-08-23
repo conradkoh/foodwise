@@ -65,11 +65,15 @@ http.route({
                 timestamp,
               });
             },
-            recordUserMealAndCalories: async ({ meal, calories }) => {
+            recordUserMealAndCalories: async ({
+              meal,
+              items,
+              totalCalories,
+            }) => {
               await ctx.runMutation(internal.user._recordUserMealAndCalories, {
                 userId: user._id,
-                meal,
-                calories,
+                items,
+                totalCalories,
                 timestamp,
               });
             },
@@ -103,7 +107,7 @@ http.route({
                 value: 'Failed to process message',
                 intermediates: agentResponse.intermediates,
               };
-              return new Response(null, { status: 200 });
+              break;
             }
             case false: {
               response = {

@@ -26,6 +26,7 @@ export const openAIParse = async <T extends z.ZodType>(p: {
       type: 'json_schema',
       json_schema: {
         name: p.schema.name,
+        strict: true,
         schema: zodToJsonSchema(schema),
       },
     },
@@ -34,8 +35,16 @@ export const openAIParse = async <T extends z.ZodType>(p: {
   // parse the response
   const contentRaw = chatCompletion.choices[0].message.content;
   if (!contentRaw) throw new Error('Null response from OpenAI');
-
-  const res: z.infer<typeof schema> = schema.parse(JSON.parse(contentRaw));
+  let res: z.infer<typeof schema> | undefined;
+  try {
+    res = schema.parse(JSON.parse(contentRaw));
+  } catch (err) {
+    console.error(
+      'invalid payload:',
+      JSON.stringify(JSON.parse(contentRaw), null, 2)
+    );
+    throw new Error('OpenAI return a response with an invalid format.');
+  }
 
   // detect api utilization and estimate cost
   const costEstimates = {

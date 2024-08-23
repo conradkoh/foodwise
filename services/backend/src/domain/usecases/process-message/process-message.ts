@@ -16,7 +16,14 @@ export const processMessage =
     recordUserWeight: (weight: { value: number; units: 'kg' }) => Promise<void>;
     recordUserMealAndCalories: (v: {
       meal: string;
-      calories: {
+      items: {
+        name: string;
+        estimatedCalories: {
+          value: number;
+          units: 'kcal';
+        };
+      }[];
+      totalCalories: {
         value: number;
         units: 'kcal';
       };
@@ -68,13 +75,13 @@ Each user message can have multiple intentions. The following are the allowed in
 Respond with clear precise advice, favoring numbers and verified data backed by research.
 
 ### ENUM: ${INTENTS.ESTIMATE_CALORIES}
-Estimate the calories for the user's meal.
+Estimate the calories for the user's input.
 
 ### ENUM: ${INTENTS.RECORD_WEIGHT}
 Extract user's weight information if provided.
 
 ### ENUM: ${INTENTS.RECORD_MEALS_AND_CALORIES}
-Extract user's meal and estimate calorie intake information if provided. 
+Extract user's mean and put in estimated calorie information.
 
 ### ENUM: ${INTENTS.RECORD_ACTIVITIES_AND_BURN}
 Extract user's activity information and estimate calorie burn information if provided.
@@ -149,9 +156,33 @@ I can also provide you with general advice and estimate calories for your meals.
               break;
             }
             case INTENTS.RECORD_MEALS_AND_CALORIES: {
-              await deps.recordUserMealAndCalories(action);
+              const totalCalories = action.items.reduce(
+                (state, item) => {
+                  switch (item.estimatedCalories.units) {
+                    case 'kcal': {
+                      state['kcal'] += item.estimatedCalories.value;
+                      break;
+                    }
+                    default: {
+                      // exhaustive switch for units
+                      const _: never = item.estimatedCalories.units;
+                    }
+                  }
+                  return state;
+                },
+                {
+                  'kcal': 0,
+                }
+              );
+              await deps.recordUserMealAndCalories({
+                ...action,
+                totalCalories: {
+                  value: totalCalories['kcal'],
+                  units: 'kcal',
+                },
+              });
               actionsTaken.push(
-                `Recorded meal: ${action.meal} (${action.calories.value} ${action.calories.units})`
+                `Recorded meal: ${action.meal} (${totalCalories.kcal} kcal`
               );
               break;
             }
@@ -167,8 +198,31 @@ I can also provide you with general advice and estimate calories for your meals.
               break;
             }
             case INTENTS.ESTIMATE_CALORIES: {
+              const totalCalories = action.items.reduce(
+                (state, item) => {
+                  switch (item.estimatedCalories.units) {
+                    case 'kcal': {
+                      state['kcal'] += item.estimatedCalories.value;
+                      break;
+                    }
+                    default: {
+                      // exhaustive switch for units
+                      const _: never = item.estimatedCalories.units;
+                    }
+                  }
+                  return state;
+                },
+                {
+                  'kcal': 0,
+                }
+              );
               actionsTaken.push(
-                `Estimated calories: ${action.estimatedCalories.value} ${action.estimatedCalories.units}`
+                [
+                  `Estimated calories: ${totalCalories.kcal} kcal`,
+                  ...action.items.map((item) => [
+                    `  - ${item.name}: ${item.estimatedCalories.value} ${item.estimatedCalories.units}`,
+                  ]),
+                ].join('\n')
               );
               break;
             }
@@ -223,6 +277,7 @@ I can also provide you with general advice and estimate calories for your meals.
       if (stage2Usage) {
         usageMetrics.push(formatOpenAIUsage(stage2Usage, 'Stage 2 usage'));
       }
+      console.error('failed to process message.', error, intermediates);
       return {
         isError: true,
         intermediates,

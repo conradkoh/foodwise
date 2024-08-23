@@ -44,11 +44,16 @@ export type UserMeal = z.infer<typeof userMeal_zodSchema>;
 
 const userMeal_zodSchema = z.object({
   userId: zid('user'),
-  meal: z.string(),
-  calories: z.object({
-    value: z.number(),
-    units: z.literal('kcal'),
-  }),
+  items: z.array(
+    z.object({
+      name: z.string(),
+      estimatedCalories: z.object({
+        value: z.number(),
+        units: z.literal('kcal'),
+      }),
+    })
+  ),
+  totalCalories: z.object({ value: z.number(), units: z.literal('kcal') }),
   timestamp: z.number(),
 });
 
