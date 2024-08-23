@@ -11,7 +11,16 @@ export default defineSchema({
   user: defineTable(user_convexSchema).index('by_telegram_user_id', [
     'telegram.userId',
   ]),
-  userWeight: defineTable(userWeight_convexSchema),
-  userMeal: defineTable(userMeal_convexSchema),
-  userActivity: defineTable(userActivity_convexSchema),
+  userWeight: defineTable(userWeight_convexSchema).index(
+    'by_userId_timestamp',
+    ['userId', 'timestamp']
+  ),
+  userMeal: defineTable(userMeal_convexSchema).index('by_userId_timestamp', [
+    'userId',
+    'timestamp',
+  ]),
+  userActivity: defineTable(userActivity_convexSchema).index(
+    'by_userId_timestamp',
+    ['userId', 'timestamp']
+  ),
 });

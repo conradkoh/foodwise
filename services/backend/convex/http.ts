@@ -94,6 +94,20 @@ http.route({
             getUserTimezone: async () => {
               return user.timezone;
             },
+            getWeeklySummary: async () => {
+              const result = await ctx.runQuery(
+                internal.user._getWeeklySummary,
+                {
+                  userId: user._id,
+                  currentTimestamp: new Date().getTime(),
+                }
+              );
+              return {
+                dailySummaries: result.dailySummaries,
+                weightChange: result.weightChange,
+                averageCalorieDeficit: result.averageCalorieDeficit,
+              };
+            },
           })({
             inputText: message.message?.text,
           });
@@ -118,8 +132,6 @@ http.route({
               break;
             }
           }
-
-          console.log(JSON.stringify(agentResponse, null, 2));
         } catch (error) {
           console.error('failed to process message.', error);
           response = {
@@ -180,7 +192,7 @@ http.route({
 
         //Send a message to the user
         await sendMessage(ctx, { chatId }, async (tg) => {
-          return [tg.text(response.value)];
+          return [tg.text(response.value).parseMode('HTML')];
         });
       } catch (error) {
         console.error('failed to process message.', error);

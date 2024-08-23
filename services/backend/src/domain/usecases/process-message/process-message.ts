@@ -10,6 +10,33 @@ import {
 } from '@/domain/usecases/process-message/schemas/stage_2';
 import { openAIParse } from '@/utils/openai';
 import { z } from 'zod';
+import { DateTime } from 'luxon';
+
+type DailySummary =
+  | {
+      range: {
+        start: number;
+        end: number;
+      };
+      hasData: true;
+      caloriesIn?: number;
+      caloriesOut?: number;
+      deficit?: number;
+      weight?: number;
+    }
+  | {
+      range: {
+        start: number;
+        end: number;
+      };
+      hasData: false;
+    };
+
+interface WeeklySummary {
+  dailySummaries: DailySummary[];
+  weightChange?: number;
+  averageCalorieDeficit: number;
+}
 
 export const processMessage =
   (deps: {
@@ -37,6 +64,7 @@ export const processMessage =
     }) => Promise<void>;
     getUserTimezone: () => Promise<string | undefined>;
     setUserTimezone: (timezone: string) => Promise<void>;
+    getWeeklySummary: () => Promise<WeeklySummary>;
   }) =>
   async (params: {
     inputText: string;
@@ -89,6 +117,13 @@ Extract user's activity information and estimate calorie burn information if pro
 ### ENUM: ${INTENTS.SET_TIMEZONE}
 Set the user's timezone. The timezone should be in a standard format (e.g., 'America/New_York', 'Europe/London').
 
+### ENUM: ${INTENTS.GET_WEEKLY_SUMMARY}
+Generate a summary of the user's activity for the last week, including daily calorie intake, burn, deficit, and weight measurements.
+Include the provided daily breakdown in the reply.
+
+## Output Format for STAGE_2 
+Plain text only. Do not use markdown.
+
 `;
     let intermediates: {
       stage1Output?: z.infer<typeof stage1Output_zodSchema>;
@@ -114,6 +149,7 @@ Here are some things I can help with
   2. Keep track of your meals and calories 🥗🌯
   3. Keep track of your activities and calorie burn 🏃🏻‍♂️🏃🏽‍♀️🔥
   4. Set your timezone 🕥
+  5. Get a weekly summary of your activities 📊
 
 I can also provide you with general advice and estimate calories for your meals.
 `.trim();
@@ -231,7 +267,12 @@ I can also provide you with general advice and estimate calories for your meals.
               actionsTaken.push(`Set timezone: ${action.timezone}`);
               break;
             }
-
+            case INTENTS.GET_WEEKLY_SUMMARY: {
+              const summary = await deps.getWeeklySummary();
+              const summaryText = formatWeeklySummary(summary);
+              actionsTaken.push(summaryText);
+              break;
+            }
             default: {
               // exhaustive switch
               const _: never = action;
@@ -308,4 +349,31 @@ function formatOpenAIUsage(
       },
     },
   };
+}
+
+function formatWeeklySummary(summary: WeeklySummary): string {
+  let result = 'Weekly Summary:\n\n';
+
+  for (let dailySummary of summary.dailySummaries) {
+    if (!dailySummary.hasData) {
+      continue;
+    }
+    const dayDate = DateTime.fromMillis(dailySummary.range.start).toFormat(
+      'LLL dd'
+    );
+    result += `${dayDate}:\n`;
+    result += `  Calories In: ${dailySummary.caloriesIn} kcal\n`;
+    result += `  Calories Out: ${dailySummary.caloriesOut} kcal\n`;
+    result += `  Deficit: ${dailySummary.deficit} kcal\n`;
+    if (dailySummary.weight) {
+      result += `  Weight: ${dailySummary.weight} kg\n`;
+    }
+    result += '\n';
+  }
+  if (summary.weightChange) {
+    result += `Overall Weight Change: ${summary.weightChange > 0 ? '+' : ''}${summary.weightChange.toFixed(2)} kg\n`;
+  }
+  result += `Average Daily Calorie Deficit: ${summary.averageCalorieDeficit.toFixed(2)} kcal`;
+
+  return result;
 }

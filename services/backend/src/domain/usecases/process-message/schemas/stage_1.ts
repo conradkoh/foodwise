@@ -8,6 +8,7 @@ const baseAction = z.object({
     INTENTS.RECORD_WEIGHT,
     INTENTS.RECORD_MEALS_AND_CALORIES,
     INTENTS.RECORD_ACTIVITIES_AND_BURN,
+    INTENTS.GET_WEEKLY_SUMMARY,
   ]),
   // .describe('The intent of the action'),
 });
@@ -81,6 +82,11 @@ const setTimezoneAction = baseAction.extend({
   timezone: z.string(), // .describe('The timezone in a standard format'),
 });
 
+const getWeeklySummaryAction = baseAction.extend({
+  intent: z.literal(INTENTS.GET_WEEKLY_SUMMARY),
+  // .describe("Get the user's weekly summary of activities, calories, and weight changes."),
+});
+
 export const stage1Output_zodSchema = z.object({
   actions: z.array(
     z.union([
@@ -90,6 +96,7 @@ export const stage1Output_zodSchema = z.object({
       generalAdviceAction,
       estimateCaloriesAction,
       setTimezoneAction,
+      getWeeklySummaryAction,
     ])
   ),
   // .describe("List of actions to be taken based on the user's input"),
