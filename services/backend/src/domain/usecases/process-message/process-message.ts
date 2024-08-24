@@ -361,10 +361,11 @@ function formatSummary(params: {
   let resultLines = [`${params.type} summary:\n\n`];
 
   for (let dailySummary of params.summary.dailySummaries) {
+    resultLines.push(`Date: ${dailySummary.date}`);
     if (!dailySummary.hasData) {
+      resultLines.push('  No data recorded.');
       continue;
     }
-    resultLines.push(`Date: ${dailySummary.date}`);
 
     if (dailySummary.caloriesIn) {
       resultLines.push(
