@@ -105,6 +105,20 @@ Include the provided daily breakdown in the reply.
 Generate a summary of the user's activity for today and yesterday, including calorie intake, burn, deficit, and weight measurements.
 Compare today's performance with yesterday's.
 
+## Examples
+### Summary for last week or daily comparison
+Date: 2023-05-01
+  [Calories] 🍔 In: 1000 kcal, 🔥 Out: 2000 kcal, 👍🏼 Deficit: 1000 kcal
+  [Weight] 💪🏼 Weight: 70 kg
+
+  Date: 2023-05-02
+  [Calories] 🍔 In: 2500 kcal, 🔥 Out: 2000 kcal, ⚠️ Deficit: -500 kcal
+  [Weight] 💪🏼 Weight: 65 kg
+
+Summary:
+    Total Weight Lost: 5 kg
+    Average Daily Calorie Deficit: 250 kcal
+
 ## Output Format for STAGE_2 
 Plain text only. Do not use markdown.
 
