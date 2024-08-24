@@ -114,7 +114,7 @@ Estimate the calories for the user's input.
 Extract user's weight information if provided.
 
 ### ENUM: ${INTENTS.RECORD_MEALS_AND_CALORIES}
-Extract user's mean and put in estimated calorie information.
+Extract the items the user has eaten and put in estimated calorie information.
 
 ### ENUM: ${INTENTS.RECORD_ACTIVITIES_AND_BURN}
 Extract user's activity information and estimate calorie burn information if provided.
