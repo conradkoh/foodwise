@@ -10,7 +10,6 @@ import {
 } from '@/domain/usecases/process-message/schemas/stage_2';
 import { openAIParse } from '@/utils/openai';
 import { z } from 'zod';
-import { DateTime } from 'luxon';
 
 import { GetLastNDaysSummaryResult } from '@/domain/usecases/get-summary';
 
@@ -359,7 +358,7 @@ function formatSummary(params: {
   summary: GetLastNDaysSummaryResult;
   userTz: string;
 }) {
-  let resultLines = [`${params.type} Summary:\n\n`];
+  let resultLines = [`${params.type} summary:\n\n`];
 
   for (let dailySummary of params.summary.dailySummaries) {
     if (!dailySummary.hasData) {

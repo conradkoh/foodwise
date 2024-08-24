@@ -104,24 +104,33 @@ export const getLastNDaysSummary =
  * @returns
  */
 function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
+  const summariesWithData = dailySummaries.filter((d) => d.hasData);
   // 1. weight loss
-  const firstDay = dailySummaries[0];
-  const lastDay = dailySummaries[dailySummaries.length - 1];
-
+  const firstDay = summariesWithData[0];
+  const lastDay = summariesWithData[summariesWithData.length - 1];
   if (lastDay.dateTs < firstDay.dateTs) {
     const msg = `getOverviewFromDailySummaries failed: lastDay.dateTs < firstDay.dateTs. lastDay.dateTs: ${lastDay.dateTs}, firstDay.dateTs: ${firstDay.dateTs}`;
     throw new Error(msg);
   }
 
   // 2. average calorie deficit
-  let averageCalorieDeficit = {
+  let calorieStats = {
     total: 0,
     numDaysWithData: 0,
   };
-  for (let dailySummary of dailySummaries) {
+  let seenCalorieUnit = 'kcal' as const; //hard coded for now
+  for (let dailySummary of summariesWithData) {
+    if (
+      dailySummary.deficit &&
+      dailySummary.deficit.units !== seenCalorieUnit
+    ) {
+      throw new Error(
+        'getOverviewFromDailySummaries failed: deficit units do not match'
+      );
+    }
     if (dailySummary.deficit) {
-      averageCalorieDeficit.total += dailySummary.deficit.value;
-      averageCalorieDeficit.numDaysWithData++;
+      calorieStats.total += dailySummary.deficit.value;
+      calorieStats.numDaysWithData++;
     }
   }
 
@@ -140,17 +149,9 @@ function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
       units: weightLost.units,
     };
   }
-  if (lastDay.deficit && firstDay.deficit) {
-    if (lastDay.deficit.units !== firstDay.deficit.units) {
-      throw new Error('Deficit units do not match');
-    }
-    const deficitUnit = lastDay.deficit.units;
-    const deficit = {
-      value:
-        averageCalorieDeficit.total / averageCalorieDeficit.numDaysWithData,
-      units: deficitUnit,
-    };
-    overview.averageCalorieDeficit = deficit;
-  }
+  overview.averageCalorieDeficit = {
+    value: calorieStats.total / calorieStats.numDaysWithData,
+    units: seenCalorieUnit,
+  };
   return overview;
 }

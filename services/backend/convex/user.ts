@@ -181,11 +181,12 @@ function computeDailySummary(params: {
 
   for (let i = 0; i < numDays; i++) {
     const dayStart = startTimestamp + i * oneDayInMs;
-    const dayEnd = dayStart + oneDayInMs;
+    const dayEnd = dayStart + oneDayInMs - 1;
 
     const dayMeals = meals.filter(
       (meal) => meal.timestamp >= dayStart && meal.timestamp < dayEnd
     );
+    const hasMealData = dayMeals.length > 0;
     const caloriesIn = dayMeals.reduce(
       (sum, meal) => sum + (meal.totalCalories.value || 0),
       0
@@ -195,6 +196,7 @@ function computeDailySummary(params: {
       (activity) =>
         activity.timestamp >= dayStart && activity.timestamp < dayEnd
     );
+    const hasActivityData = dayActivities.length > 0;
     const activityBurn = dayActivities.reduce(
       (sum, activity) => sum + (activity.caloriesBurned.value || 0),
       0
@@ -209,6 +211,7 @@ function computeDailySummary(params: {
     const dayWeights = weights.filter(
       (w) => w.timestamp >= dayStart && w.timestamp < dayEnd
     );
+    const hasWeightData = dayWeights.length > 0;
     const avgWeight = dayWeights.reduce(
       (avg, w) => {
         avg.total += w.weight.value;
@@ -222,35 +225,31 @@ function computeDailySummary(params: {
       avgWeight.count > 0 ? avgWeight.total / avgWeight.count : undefined;
 
     const summary: DailySummary = {
-      hasData: false,
+      hasData: hasMealData || hasActivityData || hasWeightData,
       date: DateTime.fromMillis(dayStart)
         .setZone(userTz)
         .toFormat('yyyy-MM-dd'),
       dateTs: dayStart,
     };
     if (caloriesIn) {
-      summary.hasData = true;
       summary.caloriesIn = {
         value: caloriesIn,
         units: 'kcal',
       };
     }
     if (caloriesOut) {
-      summary.hasData = true;
       summary.caloriesOut = {
         value: caloriesOut,
         units: 'kcal',
       };
     }
     if (deficit) {
-      summary.hasData = true;
       summary.deficit = {
         value: deficit,
         units: 'kcal',
       };
     }
     if (weight) {
-      summary.hasData = true;
       summary.weight = {
         value: weight,
         units: 'kg',
