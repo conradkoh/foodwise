@@ -4,6 +4,7 @@ import {
 } from '@/domain/entities/daily_summary';
 import { zid } from 'convex-helpers/server/zod';
 import { Id } from 'convex/_generated/dataModel';
+import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 // zod input
@@ -11,8 +12,10 @@ export type GetLastNDaysSummaryParams = z.infer<
   typeof getLastNDaysSummary_params_zodSchema
 >;
 const getLastNDaysSummary_params_zodSchema = z.object({
+  userTz: z.string(),
   userId: zid('user'),
   endOfCurrentDayTs: z.number(),
+  numDays: z.number(),
 });
 
 // zod output
@@ -49,6 +52,7 @@ const getLastNDaysSummary_output_zodSchema = z.union([
 
 type Deps = {
   getSummariesRollupDaily: (params: {
+    userTz: string;
     userId: Id<'user'>;
     fromTimestamp: number;
     toTimestamp: number;
@@ -65,13 +69,14 @@ export const getLastNDaysSummary =
   async (
     params: GetLastNDaysSummaryParams
   ): Promise<GetLastNDaysSummaryResult> => {
-    const { userId, endOfCurrentDayTs } = params;
+    const { userId, endOfCurrentDayTs, userTz, numDays } = params;
     const oneDayInMs = 24 * 60 * 60 * 1000;
-    const sevenDaysAgoTimestamp = endOfCurrentDayTs - 7 * oneDayInMs;
+    const nDaysAgoStartTimestamp = endOfCurrentDayTs - numDays * oneDayInMs + 1;
 
     const dailySummaries = await deps.getSummariesRollupDaily({
+      userTz,
       userId,
-      fromTimestamp: sevenDaysAgoTimestamp,
+      fromTimestamp: nDaysAgoStartTimestamp,
       toTimestamp: endOfCurrentDayTs,
     });
 
@@ -103,6 +108,11 @@ function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
   const firstDay = dailySummaries[0];
   const lastDay = dailySummaries[dailySummaries.length - 1];
 
+  if (lastDay.dateTs < firstDay.dateTs) {
+    const msg = `getOverviewFromDailySummaries failed: lastDay.dateTs < firstDay.dateTs. lastDay.dateTs: ${lastDay.dateTs}, firstDay.dateTs: ${firstDay.dateTs}`;
+    throw new Error(msg);
+  }
+
   // 2. average calorie deficit
   let averageCalorieDeficit = {
     total: 0,
@@ -122,7 +132,7 @@ function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
     }
     const weightUnit = lastDay.weight.units;
     const weightLost = {
-      value: lastDay.weight.value - firstDay.weight.value,
+      value: firstDay.weight.value - lastDay.weight.value,
       units: weightUnit,
     };
     overview.weightLost = {

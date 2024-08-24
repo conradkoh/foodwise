@@ -73,35 +73,52 @@ export const _setUserTimezone = internalMutation({
   },
 });
 
-// interface DailySummary {
-//   range: {
-//     start: number;
-//     end: number;
-//   };
-//   caloriesIn?: number;
-//   caloriesOut?: number;
-//   deficit?: number;
-//   weight?: number;
-//   hasData: boolean;
-// }
+export const _getLastNDaysSummary = internalQuery({
+  args: {
+    userId: v.id('user'),
+    endOfCurrentDayTs: v.number(),
+    numDays: v.number(),
+    userTz: v.string(),
+  },
+  handler: async (ctx, args): Promise<GetLastNDaysSummaryResult> => {
+    const { userId, endOfCurrentDayTs, userTz, numDays } = args;
+    const summary = await getLastNDaysSummary({
+      getSummariesRollupDaily: (params) => {
+        return getSummariesRollupDaily(ctx, params);
+      },
+    })({
+      userTz,
+      userId,
+      numDays,
+      endOfCurrentDayTs,
+    });
 
+    return summary;
+  },
+});
+/**
+ * Create summaries rolled up daily
+ * @param ctx
+ * @param params
+ * @returns
+ */
 async function getSummariesRollupDaily(
   ctx: QueryCtx,
   params: {
-    userId: Id<'user'>;
-    startTimestamp: number;
-    endTimestamp: number;
     userTz: string;
+    userId: Id<'user'>;
+    fromTimestamp: number;
+    toTimestamp: number;
   }
 ): Promise<DailySummary[]> {
-  const { userId, startTimestamp, endTimestamp, userTz } = params;
+  const { userId, fromTimestamp, toTimestamp, userTz } = params;
   const meals = await ctx.db
     .query('userMeal')
     .withIndex('by_userId_timestamp', (q) => q.eq('userId', userId))
     .filter((q) =>
       q.and(
-        q.gte(q.field('timestamp'), startTimestamp),
-        q.lt(q.field('timestamp'), endTimestamp)
+        q.gte(q.field('timestamp'), fromTimestamp),
+        q.lt(q.field('timestamp'), toTimestamp)
       )
     )
     .collect();
@@ -111,8 +128,8 @@ async function getSummariesRollupDaily(
     .withIndex('by_userId_timestamp', (q) => q.eq('userId', userId))
     .filter((q) =>
       q.and(
-        q.gte(q.field('timestamp'), startTimestamp),
-        q.lt(q.field('timestamp'), endTimestamp)
+        q.gte(q.field('timestamp'), fromTimestamp),
+        q.lt(q.field('timestamp'), toTimestamp)
       )
     )
     .collect();
@@ -122,8 +139,8 @@ async function getSummariesRollupDaily(
     .withIndex('by_userId_timestamp', (q) => q.eq('userId', userId))
     .filter((q) =>
       q.and(
-        q.gte(q.field('timestamp'), startTimestamp),
-        q.lt(q.field('timestamp'), endTimestamp)
+        q.gte(q.field('timestamp'), fromTimestamp),
+        q.lt(q.field('timestamp'), toTimestamp)
       )
     )
     .collect();
@@ -131,8 +148,8 @@ async function getSummariesRollupDaily(
   const summaries: DailySummary[] = computeDailySummary({
     userTz,
     baseBurn: 1600, //TODO: get from user
-    endTimestamp,
-    startTimestamp,
+    endTimestamp: toTimestamp,
+    startTimestamp: fromTimestamp,
     meals,
     activities,
     weights,
@@ -140,36 +157,6 @@ async function getSummariesRollupDaily(
 
   return summaries;
 }
-
-export const _getLastNDaysSummary = internalQuery({
-  args: {
-    userId: v.id('user'),
-    endOfCurrentDayTs: v.number(),
-    numDays: v.number(),
-    userTz: v.string(),
-  },
-  handler: async (ctx, args): Promise<GetLastNDaysSummaryResult> => {
-    const { userId, endOfCurrentDayTs, userTz } = args;
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    const rangeStartTs = endOfCurrentDayTs - args.numDays * oneDayInMs;
-
-    const dailySummaries = await getSummariesRollupDaily(ctx, {
-      userTz,
-      userId,
-      startTimestamp: rangeStartTs,
-      endTimestamp: endOfCurrentDayTs,
-    });
-
-    const summary = await getLastNDaysSummary({
-      getSummariesRollupDaily: () => Promise.resolve(dailySummaries),
-    })({
-      userId,
-      endOfCurrentDayTs,
-    });
-
-    return summary;
-  },
-});
 
 /**
  * Given the user's consumption, compute the daily summary
@@ -236,21 +223,10 @@ function computeDailySummary(params: {
 
     const summary: DailySummary = {
       hasData: false,
-      range: {
-        start: {
-          ts: dayStart,
-          str: DateTime.fromMillis(dayStart)
-            .setZone(userTz)
-            .toFormat('dd MMM yyyy HH:mm'),
-        },
-
-        end: {
-          ts: dayEnd,
-          str: DateTime.fromMillis(dayEnd)
-            .setZone(userTz)
-            .toFormat('dd MMM yyyy HH:mm'),
-        },
-      },
+      date: DateTime.fromMillis(dayStart)
+        .setZone(userTz)
+        .toFormat('yyyy-MM-dd'),
+      dateTs: dayStart,
     };
     if (caloriesIn) {
       summary.hasData = true;

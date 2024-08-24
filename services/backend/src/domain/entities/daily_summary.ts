@@ -4,16 +4,8 @@ export type DailySummary = z.infer<typeof dailySummary_zodSchema>;
 
 //zod
 export const dailySummary_zodSchema = z.object({
-  range: z.object({
-    start: z.object({
-      ts: z.number(),
-      str: z.string().describe('Formatted date string'),
-    }),
-    end: z.object({
-      ts: z.number(),
-      str: z.string().describe('Formatted date string'),
-    }),
-  }),
+  date: z.string(), //date in format 'YYYY-MM-DD'
+  dateTs: z.number(),
   caloriesIn: z.optional(
     z.object({
       value: z.number(),

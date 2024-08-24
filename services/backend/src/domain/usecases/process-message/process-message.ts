@@ -365,9 +365,7 @@ function formatSummary(params: {
     if (!dailySummary.hasData) {
       continue;
     }
-    const dayDate = DateTime.fromMillis(dailySummary.range.start.ts)
-      .setZone(params.userTz)
-      .toFormat('dd MMM yyyy HH:mm');
+    resultLines.push(`Date: ${dailySummary.date}`);
 
     if (dailySummary.caloriesIn) {
       resultLines.push(
@@ -390,6 +388,9 @@ function formatSummary(params: {
       );
     }
   }
+
+  // Summary across all days
+  resultLines.push(`Summary Across All Days:`);
   if (params.summary.overview?.weightLost) {
     resultLines.push(
       `  Weight Lost: ${params.summary.overview.weightLost.value} ${params.summary.overview.weightLost.units}`
@@ -400,94 +401,6 @@ function formatSummary(params: {
       `  Average Daily Calorie Deficit: ${params.summary.overview.averageCalorieDeficit.value.toFixed(2)} ${params.summary.overview.averageCalorieDeficit.units}`
     );
   }
+  console.log('debug:', resultLines.join('\n'));
   return resultLines.join('\n');
 }
-
-// function formatWeeklySummary(summary: WeeklySummary, userTz: string): string {
-//   let result = 'Weekly Summary:\n\n';
-
-//   for (let dailySummary of summary.dailySummaries) {
-//     if (!dailySummary.hasData) {
-//       continue;
-//     }
-//     const dayDate = DateTime.fromMillis(dailySummary.range.start.ts)
-//       .setZone(userTz)
-//       .toFormat('LLL dd');
-//     result += `${dayDate}:\n`;
-//     result += `  Calories In: ${dailySummary.caloriesIn} ${dailySummary.caloriesIn.units}\n`;
-//     result += `  Calories Out: ${dailySummary.caloriesOut} ${dailySummary.caloriesOut.units}\n`;
-//     result += `  Deficit: ${dailySummary.deficit} ${dailySummary.deficit.units}\n`;
-//     if (dailySummary.weight) {
-//       result += `  Weight: ${dailySummary.weight} ${dailySummary.weight.units}\n`;
-//     }
-//     result += '\n';
-//   }
-//   if (summary.weightChange) {
-//     result += `Overall Weight Change: ${summary.weightChange.value > 0 ? '+' : ''}${summary.weightChange.value.toFixed(2)} ${summary.weightChange.units}\n`;
-//   }
-//   result += `Average Daily Calorie Deficit: ${summary.averageCalorieDeficit.value.toFixed(2)} ${summary.averageCalorieDeficit.units}`;
-
-//   return result;
-// }
-
-// function formatDailySummary(
-//   today: DailySummary,
-//   yesterday: DailySummary
-// ): string {
-//   let result = 'Generated Daily Summary:\n\n';
-
-//   const formatDate = (date: number) =>
-//     DateTime.fromMillis(date).toFormat('LLL dd');
-
-//   result += `Today (${formatDate(today.range.start.ts)}):\n`;
-//   if (today.hasData) {
-//     result += `  Calories In: ${today.caloriesIn || 'N/A'} ${today.caloriesIn ? today.caloriesIn.units : ''}\n`;
-//     result += `  Calories Out: ${today.caloriesOut || 'N/A'} ${today.caloriesOut ? today.caloriesOut.units : ''}\n`;
-//     result += `  Deficit: ${today.deficit || 'N/A'} ${today.deficit ? today.deficit.units : ''}\n`;
-//     if (today.weight) {
-//       result += `  Weight: ${today.weight} ${today.weight.units}\n`;
-//     }
-//   } else {
-//     result += '  No data recorded for today\n';
-//   }
-
-//   result += `\nYesterday (${formatDate(yesterday.range.start.ts)}):\n`;
-//   if (yesterday.hasData) {
-//     result += `  Calories In: ${yesterday.caloriesIn || 'N/A'} ${yesterday.caloriesIn ? yesterday.caloriesIn.units : ''}\n`;
-//     result += `  Calories Out: ${yesterday.caloriesOut || 'N/A'} ${yesterday.caloriesOut ? yesterday.caloriesOut.units : ''}\n`;
-//     result += `  Deficit: ${yesterday.deficit || 'N/A'} ${yesterday.deficit ? yesterday.deficit.units : ''}\n`;
-//     if (yesterday.weight) {
-//       result += `  Weight: ${yesterday.weight} ${yesterday.weight.units}\n`;
-//     }
-//   } else {
-//     result += 'No data recorded for yesterday\n';
-//   }
-
-//   result += '\nComparison:\n';
-//   if (today.hasData && yesterday.hasData) {
-//     if (today.caloriesIn !== undefined && yesterday.caloriesIn !== undefined) {
-//       const calorieInDiff = today.caloriesIn.value - yesterday.caloriesIn.value;
-//       result += `  Calories In: ${calorieInDiff > 0 ? '+' : ''}${calorieInDiff} ${today.caloriesIn ? today.caloriesIn.units : ''}\n`;
-//     }
-//     if (
-//       today.caloriesOut !== undefined &&
-//       yesterday.caloriesOut !== undefined
-//     ) {
-//       const calorieOutDiff =
-//         today.caloriesOut.value - yesterday.caloriesOut.value;
-//       result += `  Calories Out: ${calorieOutDiff > 0 ? '+' : ''}${calorieOutDiff} ${today.caloriesOut ? today.caloriesOut.units : ''}\n`;
-//     }
-//     if (today.deficit !== undefined && yesterday.deficit !== undefined) {
-//       const deficitDiff = today.deficit.value - yesterday.deficit.value;
-//       result += `  Deficit: ${deficitDiff > 0 ? '+' : ''}${deficitDiff} ${today.deficit ? today.deficit.units : ''}\n`;
-//     }
-//     if (today.weight && yesterday.weight) {
-//       const weightDiff = today.weight.value - yesterday.weight.value;
-//       result += `  Weight Change: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(2)} ${today.weight ? today.weight.units : ''}\n`;
-//     }
-//   } else {
-//     result += 'Unable to compare due to missing data\n';
-//   }
-
-//   return result;
-// }
