@@ -36,6 +36,9 @@ http.route({
         });
 
         const userTz = user?.timezone || 'Asia/Singapore';
+        const currentDateStr = DateTime.now()
+          .setZone(userTz)
+          .toFormat('dd MMM yyyy HH:mm');
 
         // create user if not found
         if (!user) {
@@ -58,6 +61,7 @@ http.route({
           value: 'Failed to process message',
         };
         let usageMetrics: MessageUsageMetric[] | undefined = undefined;
+        const fetchedData: { name: string; input: any; output: any }[] = [];
         try {
           //process the message
           const agentResponse = await processMessage({
@@ -97,32 +101,37 @@ http.route({
             getUserTimezone: async () => {
               return user.timezone;
             },
-            getWeeklySummary: async () => {
-              const result = await ctx.runQuery(
-                internal.user._getWeeklySummary,
+            getLastNDaysSummary: async (params) => {
+              const endOfCurrentDayTs = DateTime.now()
+                .setZone(userTz)
+                .endOf('day')
+                .toMillis();
+              const summary = await ctx.runQuery(
+                internal.user._getLastNDaysSummary,
                 {
                   userId: user._id,
-                  currentTimestamp: new Date().getTime(),
+                  userTz,
+                  endOfCurrentDayTs,
+                  numDays: params.numDays,
                 }
               );
-              return {
-                dailySummaries: result.dailySummaries,
-                weightChange: result.weightChange,
-                averageCalorieDeficit: result.averageCalorieDeficit,
-              };
-            },
-            getLast2DaySummary: async () => {
-              return ctx.runQuery(internal.user._getLast2DaySummary, {
-                userId: user._id,
-                endOfDayTimestamp: DateTime.now()
-                  .setZone(userTz)
-                  .endOf('day')
-                  .toMillis(),
+              fetchedData.push({
+                name: 'getLastNDaysSummary',
+                input: {
+                  userId: user._id,
+                  endOfCurrentDay: endOfCurrentDayTs,
+                  numDays: params.numDays,
+                },
+                output: {
+                  summary,
+                },
               });
+              return summary;
             },
           })({
             inputText: message.message?.text,
             userTz,
+            currentDateStr,
           });
           // update usage metrics
           usageMetrics = [...agentResponse.usageMetrics];
@@ -161,6 +170,7 @@ http.route({
             status: response.isValid ? 'processed' : 'failed',
             rawPayload: message,
             intermediates: response.intermediates,
+            fetchedData,
             response: response.value,
             usageMetrics,
             totalCostEstimated: usageMetrics?.reduce(

@@ -1,14 +1,21 @@
 import {
   user_convexSchema,
+  UserActivity,
   userActivity_convexSchema,
+  UserMeal,
   userMeal_convexSchema,
+  UserWeight,
   userWeight_convexSchema,
 } from '@/domain/entities/user';
 import { internalMutation, internalQuery, QueryCtx } from './_generated/server';
 import { v } from 'convex/values';
-import { start } from 'repl';
-import { has } from 'effect/Record';
 import { Id } from 'convex/_generated/dataModel';
+import {
+  getLastNDaysSummary,
+  GetLastNDaysSummaryResult,
+} from '@/domain/usecases/get-summary';
+import { DailySummary } from '@/domain/entities/daily_summary';
+import { DateTime } from 'luxon';
 
 export const _getTelegramUser = internalQuery({
   args: {
@@ -66,24 +73,28 @@ export const _setUserTimezone = internalMutation({
   },
 });
 
-interface DailySummary {
-  range: {
-    start: number;
-    end: number;
-  };
-  caloriesIn?: number;
-  caloriesOut?: number;
-  deficit?: number;
-  weight?: number;
-  hasData: boolean;
-}
+// interface DailySummary {
+//   range: {
+//     start: number;
+//     end: number;
+//   };
+//   caloriesIn?: number;
+//   caloriesOut?: number;
+//   deficit?: number;
+//   weight?: number;
+//   hasData: boolean;
+// }
 
 async function getSummariesRollupDaily(
   ctx: QueryCtx,
-  userId: Id<'user'>,
-  startTimestamp: number,
-  endTimestamp: number
+  params: {
+    userId: Id<'user'>;
+    startTimestamp: number;
+    endTimestamp: number;
+    userTz: string;
+  }
 ): Promise<DailySummary[]> {
+  const { userId, startTimestamp, endTimestamp, userTz } = params;
   const meals = await ctx.db
     .query('userMeal')
     .withIndex('by_userId_timestamp', (q) => q.eq('userId', userId))
@@ -117,6 +128,65 @@ async function getSummariesRollupDaily(
     )
     .collect();
 
+  const summaries: DailySummary[] = computeDailySummary({
+    userTz,
+    baseBurn: 1600, //TODO: get from user
+    endTimestamp,
+    startTimestamp,
+    meals,
+    activities,
+    weights,
+  });
+
+  return summaries;
+}
+
+export const _getLastNDaysSummary = internalQuery({
+  args: {
+    userId: v.id('user'),
+    endOfCurrentDayTs: v.number(),
+    numDays: v.number(),
+    userTz: v.string(),
+  },
+  handler: async (ctx, args): Promise<GetLastNDaysSummaryResult> => {
+    const { userId, endOfCurrentDayTs, userTz } = args;
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    const rangeStartTs = endOfCurrentDayTs - args.numDays * oneDayInMs;
+
+    const dailySummaries = await getSummariesRollupDaily(ctx, {
+      userTz,
+      userId,
+      startTimestamp: rangeStartTs,
+      endTimestamp: endOfCurrentDayTs,
+    });
+
+    const summary = await getLastNDaysSummary({
+      getSummariesRollupDaily: () => Promise.resolve(dailySummaries),
+    })({
+      userId,
+      endOfCurrentDayTs,
+    });
+
+    return summary;
+  },
+});
+
+/**
+ * Given the user's consumption, compute the daily summary
+ * @param params
+ * @returns
+ */
+function computeDailySummary(params: {
+  userTz: string;
+  baseBurn: number;
+  endTimestamp: number;
+  startTimestamp: number;
+  meals: UserMeal[];
+  activities: UserActivity[];
+  weights: UserWeight[];
+}) {
+  const { userTz, endTimestamp, startTimestamp, meals, activities, weights } =
+    params;
   const oneDayInMs = 24 * 60 * 60 * 1000;
   const numDays = Math.ceil((endTimestamp - startTimestamp) / oneDayInMs);
 
@@ -144,7 +214,7 @@ async function getSummariesRollupDaily(
     );
 
     // Assuming a base metabolic rate of 1600 kcal
-    const baseBurn = 1600;
+    const baseBurn = params.baseBurn;
     const caloriesOut = baseBurn + activityBurn;
 
     const deficit = caloriesOut - caloriesIn;
@@ -164,87 +234,53 @@ async function getSummariesRollupDaily(
     const weight =
       avgWeight.count > 0 ? avgWeight.total / avgWeight.count : undefined;
 
-    summaries.push({
-      range: { start: dayStart, end: dayEnd },
-      caloriesIn: caloriesIn || undefined,
-      caloriesOut: caloriesOut || undefined,
-      deficit: deficit || undefined,
-      weight,
-      hasData: !!(caloriesIn || activityBurn || weight),
-    });
-  }
+    const summary: DailySummary = {
+      hasData: false,
+      range: {
+        start: {
+          ts: dayStart,
+          str: DateTime.fromMillis(dayStart)
+            .setZone(userTz)
+            .toFormat('dd MMM yyyy HH:mm'),
+        },
 
+        end: {
+          ts: dayEnd,
+          str: DateTime.fromMillis(dayEnd)
+            .setZone(userTz)
+            .toFormat('dd MMM yyyy HH:mm'),
+        },
+      },
+    };
+    if (caloriesIn) {
+      summary.hasData = true;
+      summary.caloriesIn = {
+        value: caloriesIn,
+        units: 'kcal',
+      };
+    }
+    if (caloriesOut) {
+      summary.hasData = true;
+      summary.caloriesOut = {
+        value: caloriesOut,
+        units: 'kcal',
+      };
+    }
+    if (deficit) {
+      summary.hasData = true;
+      summary.deficit = {
+        value: deficit,
+        units: 'kcal',
+      };
+    }
+    if (weight) {
+      summary.hasData = true;
+      summary.weight = {
+        value: weight,
+        units: 'kg',
+      };
+    }
+    summaries.push(summary);
+  }
   return summaries;
 }
-
-export const _getWeeklySummary = internalQuery({
-  args: {
-    userId: v.id('user'),
-    currentTimestamp: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const { userId, currentTimestamp } = args;
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    const sevenDaysAgoTimestamp = currentTimestamp - 7 * oneDayInMs;
-
-    const dailySummaries = await getSummariesRollupDaily(
-      ctx,
-      userId,
-      sevenDaysAgoTimestamp,
-      currentTimestamp
-    );
-
-    const delta = {
-      start: dailySummaries[0],
-      end: dailySummaries[dailySummaries.length - 1],
-    };
-    let weightChange: number | undefined = undefined;
-    if (delta.end.weight && delta.start.weight) {
-      weightChange = delta.end.weight - delta.start.weight;
-    }
-
-    // calculate average deficit
-    const summary = dailySummaries.reduce(
-      (state, day) => {
-        if (day.deficit) {
-          state.total += day.deficit;
-          state.numDaysWithData++;
-        }
-        return state;
-      },
-      {
-        total: 0,
-        numDaysWithData: 0,
-      }
-    );
-
-    return {
-      dailySummaries,
-      weightChange,
-      averageCalorieDeficit: summary.total / summary.numDaysWithData,
-    };
-  },
-});
-
-export const _getLast2DaySummary = internalQuery({
-  args: {
-    userId: v.id('user'),
-    endOfDayTimestamp: v.number(), // Timestamp for the start of the day
-  },
-  handler: async (ctx, args) => {
-    const { userId, endOfDayTimestamp } = args;
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    const startOfDayTimestamp = endOfDayTimestamp - oneDayInMs * 2;
-
-    const summaries = await getSummariesRollupDaily(
-      ctx,
-      userId,
-      startOfDayTimestamp,
-      endOfDayTimestamp
-    );
-    return {
-      yesterday: summaries[0],
-      today: summaries[1],
-    };
-  },
-});

@@ -12,31 +12,7 @@ import { openAIParse } from '@/utils/openai';
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 
-type DailySummary =
-  | {
-      range: {
-        start: number;
-        end: number;
-      };
-      hasData: true;
-      caloriesIn?: number;
-      caloriesOut?: number;
-      deficit?: number;
-      weight?: number;
-    }
-  | {
-      range: {
-        start: number;
-        end: number;
-      };
-      hasData: false;
-    };
-
-interface WeeklySummary {
-  dailySummaries: DailySummary[];
-  weightChange?: number;
-  averageCalorieDeficit: number;
-}
+import { GetLastNDaysSummaryResult } from '@/domain/usecases/get-summary';
 
 export const processMessage =
   (deps: {
@@ -64,15 +40,14 @@ export const processMessage =
     }) => Promise<void>;
     getUserTimezone: () => Promise<string | undefined>;
     setUserTimezone: (timezone: string) => Promise<void>;
-    getWeeklySummary: () => Promise<WeeklySummary>;
-    getLast2DaySummary: () => Promise<{
-      yesterday: DailySummary;
-      today: DailySummary;
-    }>;
+    getLastNDaysSummary: (params: {
+      numDays: number;
+    }) => Promise<GetLastNDaysSummaryResult>;
   }) =>
   async (params: {
     inputText: string;
     userTz: string;
+    currentDateStr: string;
   }): Promise<
     | {
         isError: false;
@@ -99,6 +74,7 @@ The HealthBot system processes a user's message and determines the steps to take
 1. STAGE_1: Process the user's message and return the list of actions to take.
 2. STAGE_2: Review the actions taken and return a concise response to the user.
 
+CURRENT DATE: ${params.currentDateStr}
 CURRENT STAGE: ${CURRENT_STAGE}
 
 ## Allowed User intentions
@@ -228,7 +204,7 @@ I can also provide you with general advice and estimate calories for your meals.
                 },
               });
               actionsTaken.push(
-                `Recorded meal: ${action.meal} (${totalCalories.kcal} kcal`
+                `Recorded meal: ${action.meal} (${totalCalories.kcal} kcal)`
               );
               break;
             }
@@ -278,18 +254,25 @@ I can also provide you with general advice and estimate calories for your meals.
               break;
             }
             case INTENTS.GET_WEEKLY_SUMMARY: {
-              const summary = await deps.getWeeklySummary();
-              const summaryText = formatWeeklySummary(summary, params.userTz);
+              const summary = await deps.getLastNDaysSummary({ numDays: 7 });
+              const summaryText = formatSummary({
+                type: 'weekly',
+                summary,
+                userTz: params.userTz,
+              });
               actionsTaken.push(summaryText);
               break;
             }
             case INTENTS.GET_DAILY_SUMMARY: {
-              const last2DaySummary = await deps.getLast2DaySummary();
+              const last2DaySummary = await deps.getLastNDaysSummary({
+                numDays: 2,
+              });
+              const summaryText = formatSummary({
+                type: 'daily',
+                summary: last2DaySummary,
+                userTz: params.userTz,
+              });
 
-              const summaryText = formatDailySummary(
-                last2DaySummary.today,
-                last2DaySummary.yesterday
-              );
               actionsTaken.push(summaryText);
               break;
             }
@@ -371,90 +354,140 @@ function formatOpenAIUsage(
   };
 }
 
-function formatWeeklySummary(summary: WeeklySummary, userTz: string): string {
-  let result = 'Weekly Summary:\n\n';
+function formatSummary(params: {
+  type: 'weekly' | 'daily';
+  summary: GetLastNDaysSummaryResult;
+  userTz: string;
+}) {
+  let resultLines = [`${params.type} Summary:\n\n`];
 
-  for (let dailySummary of summary.dailySummaries) {
+  for (let dailySummary of params.summary.dailySummaries) {
     if (!dailySummary.hasData) {
       continue;
     }
-    const dayDate = DateTime.fromMillis(dailySummary.range.start)
-      .setZone(userTz)
-      .toFormat('LLL dd');
-    result += `${dayDate}:\n`;
-    result += `  Calories In: ${dailySummary.caloriesIn} kcal\n`;
-    result += `  Calories Out: ${dailySummary.caloriesOut} kcal\n`;
-    result += `  Deficit: ${dailySummary.deficit} kcal\n`;
+    const dayDate = DateTime.fromMillis(dailySummary.range.start.ts)
+      .setZone(params.userTz)
+      .toFormat('dd MMM yyyy HH:mm');
+
+    if (dailySummary.caloriesIn) {
+      resultLines.push(
+        `  Calories In: ${dailySummary.caloriesIn.value} ${dailySummary.caloriesIn.units}`
+      );
+    }
+    if (dailySummary.caloriesOut) {
+      resultLines.push(
+        `  Calories Out: ${dailySummary.caloriesOut.value} ${dailySummary.caloriesOut.units}`
+      );
+    }
+    if (dailySummary.deficit) {
+      resultLines.push(
+        `  Deficit: ${dailySummary.deficit.value} ${dailySummary.deficit.units}`
+      );
+    }
     if (dailySummary.weight) {
-      result += `  Weight: ${dailySummary.weight} kg\n`;
+      resultLines.push(
+        `  Weight: ${dailySummary.weight.value} ${dailySummary.weight.units}`
+      );
     }
-    result += '\n';
   }
-  if (summary.weightChange) {
-    result += `Overall Weight Change: ${summary.weightChange > 0 ? '+' : ''}${summary.weightChange.toFixed(2)} kg\n`;
+  if (params.summary.overview?.weightLost) {
+    resultLines.push(
+      `  Weight Lost: ${params.summary.overview.weightLost.value} ${params.summary.overview.weightLost.units}`
+    );
   }
-  result += `Average Daily Calorie Deficit: ${summary.averageCalorieDeficit.toFixed(2)} kcal`;
-
-  return result;
+  if (params.summary.overview?.averageCalorieDeficit) {
+    resultLines.push(
+      `  Average Daily Calorie Deficit: ${params.summary.overview.averageCalorieDeficit.value.toFixed(2)} ${params.summary.overview.averageCalorieDeficit.units}`
+    );
+  }
+  return resultLines.join('\n');
 }
 
-function formatDailySummary(
-  today: DailySummary,
-  yesterday: DailySummary
-): string {
-  let result = 'Generated Daily Summary:\n\n';
+// function formatWeeklySummary(summary: WeeklySummary, userTz: string): string {
+//   let result = 'Weekly Summary:\n\n';
 
-  const formatDate = (date: number) =>
-    DateTime.fromMillis(date).toFormat('LLL dd');
+//   for (let dailySummary of summary.dailySummaries) {
+//     if (!dailySummary.hasData) {
+//       continue;
+//     }
+//     const dayDate = DateTime.fromMillis(dailySummary.range.start.ts)
+//       .setZone(userTz)
+//       .toFormat('LLL dd');
+//     result += `${dayDate}:\n`;
+//     result += `  Calories In: ${dailySummary.caloriesIn} ${dailySummary.caloriesIn.units}\n`;
+//     result += `  Calories Out: ${dailySummary.caloriesOut} ${dailySummary.caloriesOut.units}\n`;
+//     result += `  Deficit: ${dailySummary.deficit} ${dailySummary.deficit.units}\n`;
+//     if (dailySummary.weight) {
+//       result += `  Weight: ${dailySummary.weight} ${dailySummary.weight.units}\n`;
+//     }
+//     result += '\n';
+//   }
+//   if (summary.weightChange) {
+//     result += `Overall Weight Change: ${summary.weightChange.value > 0 ? '+' : ''}${summary.weightChange.value.toFixed(2)} ${summary.weightChange.units}\n`;
+//   }
+//   result += `Average Daily Calorie Deficit: ${summary.averageCalorieDeficit.value.toFixed(2)} ${summary.averageCalorieDeficit.units}`;
 
-  result += `Today (${formatDate(today.range.start)}):\n`;
-  if (today.hasData) {
-    result += `  Calories In: ${today.caloriesIn || 'N/A'} kcal\n`;
-    result += `  Calories Out: ${today.caloriesOut || 'N/A'} kcal\n`;
-    result += `  Deficit: ${today.deficit || 'N/A'} kcal\n`;
-    if (today.weight) {
-      result += `  Weight: ${today.weight} kg\n`;
-    }
-  } else {
-    result += '  No data recorded for today\n';
-  }
+//   return result;
+// }
 
-  result += `\nYesterday (${formatDate(yesterday.range.start)}):\n`;
-  if (yesterday.hasData) {
-    result += `  Calories In: ${yesterday.caloriesIn || 'N/A'} kcal\n`;
-    result += `  Calories Out: ${yesterday.caloriesOut || 'N/A'} kcal\n`;
-    result += `  Deficit: ${yesterday.deficit || 'N/A'} kcal\n`;
-    if (yesterday.weight) {
-      result += `  Weight: ${yesterday.weight} kg\n`;
-    }
-  } else {
-    result += 'No data recorded for yesterday\n';
-  }
+// function formatDailySummary(
+//   today: DailySummary,
+//   yesterday: DailySummary
+// ): string {
+//   let result = 'Generated Daily Summary:\n\n';
 
-  result += '\nComparison:\n';
-  if (today.hasData && yesterday.hasData) {
-    if (today.caloriesIn !== undefined && yesterday.caloriesIn !== undefined) {
-      const calorieInDiff = today.caloriesIn - yesterday.caloriesIn;
-      result += `  Calories In: ${calorieInDiff > 0 ? '+' : ''}${calorieInDiff} kcal\n`;
-    }
-    if (
-      today.caloriesOut !== undefined &&
-      yesterday.caloriesOut !== undefined
-    ) {
-      const calorieOutDiff = today.caloriesOut - yesterday.caloriesOut;
-      result += `  Calories Out: ${calorieOutDiff > 0 ? '+' : ''}${calorieOutDiff} kcal\n`;
-    }
-    if (today.deficit !== undefined && yesterday.deficit !== undefined) {
-      const deficitDiff = today.deficit - yesterday.deficit;
-      result += `  Deficit: ${deficitDiff > 0 ? '+' : ''}${deficitDiff} kcal\n`;
-    }
-    if (today.weight && yesterday.weight) {
-      const weightDiff = today.weight - yesterday.weight;
-      result += `  Weight Change: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(2)} kg\n`;
-    }
-  } else {
-    result += 'Unable to compare due to missing data\n';
-  }
+//   const formatDate = (date: number) =>
+//     DateTime.fromMillis(date).toFormat('LLL dd');
 
-  return result;
-}
+//   result += `Today (${formatDate(today.range.start.ts)}):\n`;
+//   if (today.hasData) {
+//     result += `  Calories In: ${today.caloriesIn || 'N/A'} ${today.caloriesIn ? today.caloriesIn.units : ''}\n`;
+//     result += `  Calories Out: ${today.caloriesOut || 'N/A'} ${today.caloriesOut ? today.caloriesOut.units : ''}\n`;
+//     result += `  Deficit: ${today.deficit || 'N/A'} ${today.deficit ? today.deficit.units : ''}\n`;
+//     if (today.weight) {
+//       result += `  Weight: ${today.weight} ${today.weight.units}\n`;
+//     }
+//   } else {
+//     result += '  No data recorded for today\n';
+//   }
+
+//   result += `\nYesterday (${formatDate(yesterday.range.start.ts)}):\n`;
+//   if (yesterday.hasData) {
+//     result += `  Calories In: ${yesterday.caloriesIn || 'N/A'} ${yesterday.caloriesIn ? yesterday.caloriesIn.units : ''}\n`;
+//     result += `  Calories Out: ${yesterday.caloriesOut || 'N/A'} ${yesterday.caloriesOut ? yesterday.caloriesOut.units : ''}\n`;
+//     result += `  Deficit: ${yesterday.deficit || 'N/A'} ${yesterday.deficit ? yesterday.deficit.units : ''}\n`;
+//     if (yesterday.weight) {
+//       result += `  Weight: ${yesterday.weight} ${yesterday.weight.units}\n`;
+//     }
+//   } else {
+//     result += 'No data recorded for yesterday\n';
+//   }
+
+//   result += '\nComparison:\n';
+//   if (today.hasData && yesterday.hasData) {
+//     if (today.caloriesIn !== undefined && yesterday.caloriesIn !== undefined) {
+//       const calorieInDiff = today.caloriesIn.value - yesterday.caloriesIn.value;
+//       result += `  Calories In: ${calorieInDiff > 0 ? '+' : ''}${calorieInDiff} ${today.caloriesIn ? today.caloriesIn.units : ''}\n`;
+//     }
+//     if (
+//       today.caloriesOut !== undefined &&
+//       yesterday.caloriesOut !== undefined
+//     ) {
+//       const calorieOutDiff =
+//         today.caloriesOut.value - yesterday.caloriesOut.value;
+//       result += `  Calories Out: ${calorieOutDiff > 0 ? '+' : ''}${calorieOutDiff} ${today.caloriesOut ? today.caloriesOut.units : ''}\n`;
+//     }
+//     if (today.deficit !== undefined && yesterday.deficit !== undefined) {
+//       const deficitDiff = today.deficit.value - yesterday.deficit.value;
+//       result += `  Deficit: ${deficitDiff > 0 ? '+' : ''}${deficitDiff} ${today.deficit ? today.deficit.units : ''}\n`;
+//     }
+//     if (today.weight && yesterday.weight) {
+//       const weightDiff = today.weight.value - yesterday.weight.value;
+//       result += `  Weight Change: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(2)} ${today.weight ? today.weight.units : ''}\n`;
+//     }
+//   } else {
+//     result += 'Unable to compare due to missing data\n';
+//   }
+
+//   return result;
+// }

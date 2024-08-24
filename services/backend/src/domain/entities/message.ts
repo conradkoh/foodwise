@@ -39,6 +39,7 @@ const message_zodSchema = z.object({
   status: z.union([z.literal('processed'), z.literal('failed')]),
   rawPayload: z.any(),
   intermediates: z.optional(z.any()),
+  fetchedData: z.optional(z.any()),
   response: z.optional(z.string()),
   totalCostEstimated: z.optional(
     // aggregate by currency
