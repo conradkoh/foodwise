@@ -4,6 +4,7 @@ import { internal } from './_generated/api';
 import { parseTelegramPayload, sendMessage } from '@/utils/telegram';
 import { processMessage } from '@/domain/usecases/process-message';
 import { MessageUsageMetric } from '@/domain/entities/message';
+import { DateTime } from 'luxon';
 
 const http = httpRouter();
 
@@ -33,6 +34,8 @@ http.route({
         let user = await ctx.runQuery(internal.user._getTelegramUser, {
           telegramUserId: userId,
         });
+
+        const userTz = user?.timezone || 'Asia/Singapore';
 
         // create user if not found
         if (!user) {
@@ -108,8 +111,18 @@ http.route({
                 averageCalorieDeficit: result.averageCalorieDeficit,
               };
             },
+            getLast2DaySummary: async () => {
+              return ctx.runQuery(internal.user._getLast2DaySummary, {
+                userId: user._id,
+                endOfDayTimestamp: DateTime.now()
+                  .setZone(userTz)
+                  .endOf('day')
+                  .toMillis(),
+              });
+            },
           })({
             inputText: message.message?.text,
+            userTz,
           });
           // update usage metrics
           usageMetrics = [...agentResponse.usageMetrics];

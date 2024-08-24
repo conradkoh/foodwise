@@ -65,9 +65,14 @@ export const processMessage =
     getUserTimezone: () => Promise<string | undefined>;
     setUserTimezone: (timezone: string) => Promise<void>;
     getWeeklySummary: () => Promise<WeeklySummary>;
+    getLast2DaySummary: () => Promise<{
+      yesterday: DailySummary;
+      today: DailySummary;
+    }>;
   }) =>
   async (params: {
     inputText: string;
+    userTz: string;
   }): Promise<
     | {
         isError: false;
@@ -121,6 +126,10 @@ Set the user's timezone. The timezone should be in a standard format (e.g., 'Ame
 Generate a summary of the user's activity for the last week, including daily calorie intake, burn, deficit, and weight measurements.
 Include the provided daily breakdown in the reply.
 
+### ENUM: ${INTENTS.GET_DAILY_SUMMARY}
+Generate a summary of the user's activity for today and yesterday, including calorie intake, burn, deficit, and weight measurements.
+Compare today's performance with yesterday's.
+
 ## Output Format for STAGE_2 
 Plain text only. Do not use markdown.
 
@@ -150,6 +159,7 @@ Here are some things I can help with
   3. Keep track of your activities and calorie burn 🏃🏻‍♂️🏃🏽‍♀️🔥
   4. Set your timezone 🕥
   5. Get a weekly summary of your activities 📊
+  6. Get a daily summary comparing today and yesterday 📅
 
 I can also provide you with general advice and estimate calories for your meals.
 `.trim();
@@ -269,7 +279,17 @@ I can also provide you with general advice and estimate calories for your meals.
             }
             case INTENTS.GET_WEEKLY_SUMMARY: {
               const summary = await deps.getWeeklySummary();
-              const summaryText = formatWeeklySummary(summary);
+              const summaryText = formatWeeklySummary(summary, params.userTz);
+              actionsTaken.push(summaryText);
+              break;
+            }
+            case INTENTS.GET_DAILY_SUMMARY: {
+              const last2DaySummary = await deps.getLast2DaySummary();
+
+              const summaryText = formatDailySummary(
+                last2DaySummary.today,
+                last2DaySummary.yesterday
+              );
               actionsTaken.push(summaryText);
               break;
             }
@@ -351,16 +371,16 @@ function formatOpenAIUsage(
   };
 }
 
-function formatWeeklySummary(summary: WeeklySummary): string {
+function formatWeeklySummary(summary: WeeklySummary, userTz: string): string {
   let result = 'Weekly Summary:\n\n';
 
   for (let dailySummary of summary.dailySummaries) {
     if (!dailySummary.hasData) {
       continue;
     }
-    const dayDate = DateTime.fromMillis(dailySummary.range.start).toFormat(
-      'LLL dd'
-    );
+    const dayDate = DateTime.fromMillis(dailySummary.range.start)
+      .setZone(userTz)
+      .toFormat('LLL dd');
     result += `${dayDate}:\n`;
     result += `  Calories In: ${dailySummary.caloriesIn} kcal\n`;
     result += `  Calories Out: ${dailySummary.caloriesOut} kcal\n`;
@@ -374,6 +394,67 @@ function formatWeeklySummary(summary: WeeklySummary): string {
     result += `Overall Weight Change: ${summary.weightChange > 0 ? '+' : ''}${summary.weightChange.toFixed(2)} kg\n`;
   }
   result += `Average Daily Calorie Deficit: ${summary.averageCalorieDeficit.toFixed(2)} kcal`;
+
+  return result;
+}
+
+function formatDailySummary(
+  today: DailySummary,
+  yesterday: DailySummary
+): string {
+  let result = 'Generated Daily Summary:\n\n';
+
+  const formatDate = (date: number) =>
+    DateTime.fromMillis(date).toFormat('LLL dd');
+
+  result += `Today (${formatDate(today.range.start)}):\n`;
+  if (today.hasData) {
+    result += `  Calories In: ${today.caloriesIn || 'N/A'} kcal\n`;
+    result += `  Calories Out: ${today.caloriesOut || 'N/A'} kcal\n`;
+    result += `  Deficit: ${today.deficit || 'N/A'} kcal\n`;
+    if (today.weight) {
+      result += `  Weight: ${today.weight} kg\n`;
+    }
+  } else {
+    result += '  No data recorded for today\n';
+  }
+
+  result += `\nYesterday (${formatDate(yesterday.range.start)}):\n`;
+  if (yesterday.hasData) {
+    result += `  Calories In: ${yesterday.caloriesIn || 'N/A'} kcal\n`;
+    result += `  Calories Out: ${yesterday.caloriesOut || 'N/A'} kcal\n`;
+    result += `  Deficit: ${yesterday.deficit || 'N/A'} kcal\n`;
+    if (yesterday.weight) {
+      result += `  Weight: ${yesterday.weight} kg\n`;
+    }
+  } else {
+    result += 'No data recorded for yesterday\n';
+  }
+
+  result += '\nComparison:\n';
+  if (today.hasData && yesterday.hasData) {
+    if (today.caloriesIn !== undefined && yesterday.caloriesIn !== undefined) {
+      const calorieInDiff = today.caloriesIn - yesterday.caloriesIn;
+      result += `  Calories In: ${calorieInDiff > 0 ? '+' : ''}${calorieInDiff} kcal\n`;
+    }
+    if (
+      today.caloriesOut !== undefined &&
+      yesterday.caloriesOut !== undefined
+    ) {
+      const calorieOutDiff = today.caloriesOut - yesterday.caloriesOut;
+      result += `  Calories Out: ${calorieOutDiff > 0 ? '+' : ''}${calorieOutDiff} kcal\n`;
+    }
+    if (today.deficit !== undefined && yesterday.deficit !== undefined) {
+      const deficitDiff = today.deficit - yesterday.deficit;
+      result += `  Deficit: ${deficitDiff > 0 ? '+' : ''}${deficitDiff} kcal\n`;
+    }
+    if (today.weight && yesterday.weight) {
+      const weightDiff = today.weight - yesterday.weight;
+      result += `  Weight Change: ${weightDiff > 0 ? '+' : ''}${weightDiff.toFixed(2)} kg\n`;
+    }
+  } else {
+    result += 'Unable to compare due to missing data\n';
+  }
 
   return result;
 }

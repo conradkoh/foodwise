@@ -87,6 +87,11 @@ const getWeeklySummaryAction = baseAction.extend({
   // .describe("Get the user's weekly summary of activities, calories, and weight changes."),
 });
 
+const getDailySummaryAction = baseAction.extend({
+  intent: z.literal(INTENTS.GET_DAILY_SUMMARY),
+  // .describe("Get the user's daily summary of activities, calories, and weight changes."),
+});
+
 export const stage1Output_zodSchema = z.object({
   actions: z.array(
     z.union([
@@ -97,6 +102,7 @@ export const stage1Output_zodSchema = z.object({
       estimateCaloriesAction,
       setTimezoneAction,
       getWeeklySummaryAction,
+      getDailySummaryAction,
     ])
   ),
   // .describe("List of actions to be taken based on the user's input"),
