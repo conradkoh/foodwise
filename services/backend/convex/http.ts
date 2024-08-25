@@ -5,7 +5,7 @@ import { parseTelegramPayload, sendMessage } from '@/utils/telegram';
 import { processMessage } from '@/domain/usecases/process-message';
 import { MessageUsageMetric } from '@/domain/entities/message';
 import { DateTime } from 'luxon';
-import { bindMutation } from '@/utils/convex';
+import { bindMutation, bindQuery } from '@/utils/convex';
 
 const http = httpRouter();
 
@@ -54,8 +54,6 @@ http.route({
           });
         }
 
-        const timestamp = new Date().getTime();
-
         let response = {
           isValid: false,
           intermediates: null as any | null,
@@ -64,68 +62,34 @@ http.route({
         let usageMetrics: MessageUsageMetric[] | undefined = undefined;
         const fetchedData: { name: string; input: any; output: any }[] = [];
         try {
-          const x = bindMutation(ctx, internal.user._recordUserWeight);
           //process the message
           const agentResponse = await processMessage({
             recordUserWeight: bindMutation(
               ctx,
               internal.user._recordUserWeight
             ),
-            recordUserMealAndCalories: async ({
-              meal,
-              items,
-              totalCalories,
-            }) => {
-              await ctx.runMutation(internal.user._recordUserMealAndCalories, {
-                userId: user._id,
-                items,
-                totalCalories,
-                timestamp,
-              });
-            },
-            recordActivityAndBurn: async ({ activity, caloriesBurned }) => {
-              await ctx.runMutation(internal.user._recordActivityAndBurn, {
-                userId: user._id,
-                activity,
-                caloriesBurned,
-                timestamp,
-              });
-            },
-            setUserTimezone: async (timezone) => {
-              await ctx.runMutation(internal.user._setUserTimezone, {
-                userId: user._id,
-                timezone,
-              });
-            },
-            getUserTimezone: async () => {
-              return user.timezone;
-            },
-            getLastNDaysSummary: async (params) => {
-              const endOfCurrentDayTs = DateTime.now()
-                .setZone(userTz)
-                .endOf('day')
-                .toMillis();
-              const summary = await ctx.runQuery(
-                internal.user._getLastNDaysSummary,
-                {
-                  userId: user._id,
-                  userTz,
-                  endOfCurrentDayTs,
-                  numDays: params.numDays,
-                }
+            recordUserMealAndCalories: bindMutation(
+              ctx,
+              internal.user._recordUserMealAndCalories
+            ),
+            recordActivityAndBurn: bindMutation(
+              ctx,
+              internal.user._recordActivityAndBurn
+            ),
+            setUserTimezone: bindMutation(ctx, internal.user._setUserTimezone),
+            getUserTimezone: async () => user.timezone,
+            getLastNDaysSummary: (args) => {
+              const queryFn = bindQuery(
+                ctx,
+                internal.user._getLastNDaysSummary
               );
+              const result = queryFn(args);
               fetchedData.push({
                 name: 'getLastNDaysSummary',
-                input: {
-                  userId: user._id,
-                  endOfCurrentDay: endOfCurrentDayTs,
-                  numDays: params.numDays,
-                },
-                output: {
-                  summary,
-                },
+                input: args,
+                output: result,
               });
-              return summary;
+              return result;
             },
           })({
             userId: user._id,

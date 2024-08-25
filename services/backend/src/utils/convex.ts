@@ -44,3 +44,30 @@ export const bindMutation = <
   return async (...args: OptionalRestArgs<Mutation>) =>
     await ctx.runMutation(functionRef, ...args);
 };
+//========================================
+// Bind Query
+//========================================
+export type BoundQuery<
+  Query extends FunctionReference<'query', 'internal' | 'public'>,
+> = (...args: FunctionArgs<Query>) => Promise<FunctionReturnType<Query>>;
+
+/**
+ * Converts a query function reference to a callable function
+ * @param ctx
+ * @param functionRef
+ * @returns
+ */
+export const bindQuery = <
+  Query extends FunctionReference<'query', 'internal' | 'public'>,
+>(
+  ctx: {
+    runQuery: (
+      ref: Query,
+      ...args: OptionalRestArgs<Query>
+    ) => Promise<FunctionReturnType<Query>>;
+  },
+  functionRef: Query
+) => {
+  return async (...args: OptionalRestArgs<Query>) =>
+    await ctx.runQuery(functionRef, ...args);
+};

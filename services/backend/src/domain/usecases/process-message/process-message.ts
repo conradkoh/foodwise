@@ -12,40 +12,24 @@ import { openAIParse } from '@/utils/openai';
 import { z } from 'zod';
 
 import { GetLastNDaysSummaryResult } from '@/domain/usecases/get-summary';
-import { BoundMutation } from '@/utils/convex';
+import { BoundMutation, BoundQuery } from '@/utils/convex';
 import { internal } from 'convex/_generated/api';
 import { Id } from 'convex/_generated/dataModel';
+import { DateTime } from 'luxon';
 
 export const processMessage =
   (deps: {
     // recordUserWeight: (weight: { value: number; units: 'kg' }) => Promise<void>;
     recordUserWeight: BoundMutation<typeof internal.user._recordUserWeight>;
-    recordUserMealAndCalories: (v: {
-      meal: string;
-      items: {
-        name: string;
-        estimatedCalories: {
-          value: number;
-          units: 'kcal';
-        };
-      }[];
-      totalCalories: {
-        value: number;
-        units: 'kcal';
-      };
-    }) => Promise<void>;
-    recordActivityAndBurn: (v: {
-      activity: string;
-      caloriesBurned: {
-        value: number;
-        units: 'kcal';
-      };
-    }) => Promise<void>;
+    recordUserMealAndCalories: BoundMutation<
+      typeof internal.user._recordUserMealAndCalories
+    >;
+    recordActivityAndBurn: BoundMutation<
+      typeof internal.user._recordActivityAndBurn
+    >;
     getUserTimezone: () => Promise<string | undefined>;
-    setUserTimezone: (timezone: string) => Promise<void>;
-    getLastNDaysSummary: (params: {
-      numDays: number;
-    }) => Promise<GetLastNDaysSummaryResult>;
+    setUserTimezone: BoundMutation<typeof internal.user._setUserTimezone>;
+    getLastNDaysSummary: BoundQuery<typeof internal.user._getLastNDaysSummary>;
   }) =>
   async (params: {
     userId: Id<'user'>;
@@ -72,6 +56,11 @@ export const processMessage =
         usageMetrics: MessageUsageMetric[];
       }
   > => {
+    const timestamp = DateTime.now().toMillis();
+    const endOfCurrentDayTs = DateTime.now()
+      .setZone(params.userTz)
+      .endOf('day')
+      .toMillis();
     const systemPrompt = (CURRENT_STAGE: 'STAGE_1' | 'STAGE_2') => `
 # HealthBot Agent Overview
 The HealthBot system processes a user's message and determines the steps to take. There are 2 stages
@@ -192,7 +181,7 @@ I can also provide you with general advice and estimate calories for your meals.
               await deps.recordUserWeight({
                 userId: params.userId,
                 weight: action.weight,
-                timestamp: Date.now(),
+                timestamp,
               });
               actionsTaken.push(
                 `Recorded weight: ${action.weight.value} ${action.weight.units}`
@@ -224,6 +213,8 @@ I can also provide you with general advice and estimate calories for your meals.
                   value: totalCalories['kcal'],
                   units: 'kcal',
                 },
+                userId: params.userId,
+                timestamp,
               });
               actionsTaken.push(
                 `Recorded meal: ${action.meal} (${totalCalories.kcal} kcal)`
@@ -231,7 +222,11 @@ I can also provide you with general advice and estimate calories for your meals.
               break;
             }
             case INTENTS.RECORD_ACTIVITIES_AND_BURN: {
-              await deps.recordActivityAndBurn(action);
+              await deps.recordActivityAndBurn({
+                ...action,
+                userId: params.userId,
+                timestamp,
+              });
               actionsTaken.push(
                 `Recorded activity: ${action.activity} (${action.caloriesBurned.value} ${action.caloriesBurned.units} burned)`
               );
@@ -271,12 +266,20 @@ I can also provide you with general advice and estimate calories for your meals.
               break;
             }
             case INTENTS.SET_TIMEZONE: {
-              await deps.setUserTimezone(action.timezone);
+              await deps.setUserTimezone({
+                ...action,
+                userId: params.userId,
+              });
               actionsTaken.push(`Set timezone: ${action.timezone}`);
               break;
             }
             case INTENTS.GET_WEEKLY_SUMMARY: {
-              const summary = await deps.getLastNDaysSummary({ numDays: 7 });
+              const summary = await deps.getLastNDaysSummary({
+                numDays: 7,
+                userId: params.userId,
+                endOfCurrentDayTs,
+                userTz: params.userTz,
+              });
               const summaryText = formatSummary({
                 type: 'weekly',
                 summary,
@@ -288,6 +291,9 @@ I can also provide you with general advice and estimate calories for your meals.
             case INTENTS.GET_DAILY_SUMMARY: {
               const last2DaySummary = await deps.getLastNDaysSummary({
                 numDays: 2,
+                userId: params.userId,
+                endOfCurrentDayTs,
+                userTz: params.userTz,
               });
               const summaryText = formatSummary({
                 type: 'daily',
