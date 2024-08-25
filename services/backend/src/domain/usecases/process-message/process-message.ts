@@ -12,10 +12,14 @@ import { openAIParse } from '@/utils/openai';
 import { z } from 'zod';
 
 import { GetLastNDaysSummaryResult } from '@/domain/usecases/get-summary';
+import { BoundMutation } from '@/utils/convex';
+import { internal } from 'convex/_generated/api';
+import { Id } from 'convex/_generated/dataModel';
 
 export const processMessage =
   (deps: {
-    recordUserWeight: (weight: { value: number; units: 'kg' }) => Promise<void>;
+    // recordUserWeight: (weight: { value: number; units: 'kg' }) => Promise<void>;
+    recordUserWeight: BoundMutation<typeof internal.user._recordUserWeight>;
     recordUserMealAndCalories: (v: {
       meal: string;
       items: {
@@ -44,6 +48,7 @@ export const processMessage =
     }) => Promise<GetLastNDaysSummaryResult>;
   }) =>
   async (params: {
+    userId: Id<'user'>;
     inputText: string;
     userTz: string;
     currentDateStr: string;
@@ -184,7 +189,11 @@ I can also provide you with general advice and estimate calories for your meals.
         stage1Output.actions.map(async (action) => {
           switch (action.intent) {
             case INTENTS.RECORD_WEIGHT: {
-              await deps.recordUserWeight(action.weight);
+              await deps.recordUserWeight({
+                userId: params.userId,
+                weight: action.weight,
+                timestamp: Date.now(),
+              });
               actionsTaken.push(
                 `Recorded weight: ${action.weight.value} ${action.weight.units}`
               );

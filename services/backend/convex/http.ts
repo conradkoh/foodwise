@@ -5,6 +5,7 @@ import { parseTelegramPayload, sendMessage } from '@/utils/telegram';
 import { processMessage } from '@/domain/usecases/process-message';
 import { MessageUsageMetric } from '@/domain/entities/message';
 import { DateTime } from 'luxon';
+import { bindMutation } from '@/utils/convex';
 
 const http = httpRouter();
 
@@ -63,15 +64,13 @@ http.route({
         let usageMetrics: MessageUsageMetric[] | undefined = undefined;
         const fetchedData: { name: string; input: any; output: any }[] = [];
         try {
+          const x = bindMutation(ctx, internal.user._recordUserWeight);
           //process the message
           const agentResponse = await processMessage({
-            recordUserWeight: async (weight) => {
-              await ctx.runMutation(internal.user._recordUserWeight, {
-                userId: user._id,
-                weight,
-                timestamp,
-              });
-            },
+            recordUserWeight: bindMutation(
+              ctx,
+              internal.user._recordUserWeight
+            ),
             recordUserMealAndCalories: async ({
               meal,
               items,
@@ -129,6 +128,7 @@ http.route({
               return summary;
             },
           })({
+            userId: user._id,
             inputText: message.message?.text,
             userTz,
             currentDateStr,
