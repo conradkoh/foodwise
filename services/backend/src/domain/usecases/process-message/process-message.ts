@@ -16,6 +16,8 @@ import { BoundMutation, BoundQuery } from '@/utils/convex';
 import { internal } from 'convex/_generated/api';
 import { Id } from 'convex/_generated/dataModel';
 import { DateTime } from 'luxon';
+import { ALL_SET_MESSAGE } from '@/domain/usecases/process-message/messages/all-set';
+import { isUserReady } from '@/domain/entities/user';
 
 export const processMessage =
   (deps: {
@@ -29,10 +31,10 @@ export const processMessage =
     getUserTimezone: () => Promise<string | undefined>;
     setUserTimezone: BoundMutation<typeof internal.user._setUserTimezone>;
     getLastNDaysSummary: BoundQuery<typeof internal.user._getLastNDaysSummary>;
-    getUserDetails: BoundQuery<typeof internal.user._getUserDetails>;
     setUserGender: BoundMutation<typeof internal.user._setUserGender>;
     setUserAge: BoundMutation<typeof internal.user._setUserAge>;
     setUserHeight: BoundMutation<typeof internal.user._setUserHeight>;
+    getUserLatestState: BoundQuery<typeof internal.user._getUser>;
   }) =>
   async (params: {
     userId: Id<'user'>;
@@ -143,10 +145,10 @@ Plain text only. Do not use markdown.
     try {
       // Handle /start command
       if (params.inputText.trim().toLowerCase() === '/start') {
-        const timezone = await deps.getUserTimezone();
-        const userDetails = await deps.getUserDetails({
+        const userDetails = await deps.getUserLatestState({
           userId: params.userId,
         });
+        let isUserAccountReady = isUserReady(userDetails);
         let response = `Welcome! To get started, please set your timezone. You can say something like "set my timezone to Singapore".
 
 I also need some information to calculate your Basal Metabolic Rate (BMR). Please provide the following details:
@@ -158,27 +160,8 @@ I also need some information to calculate your Basal Metabolic Rate (BMR). Pleas
 
 You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
         // if the user has provided all the required information, we can proceed
-        if (
-          timezone &&
-          userDetails.gender &&
-          userDetails.yearOfBirth &&
-          userDetails.height
-        ) {
-          response = `
-You're all set! 👍🏼
-
-In this chat, I can help you with a variety of tasks to help you keep track of your health!
-
-Here are some things I can help with:
-  1. Keep track of your weight ⚖️
-  2. Keep track of your meals and calories 🥗🌯
-  3. Keep track of your activities and calorie burn 🏃🏻‍♂️🏃🏽‍♀️🔥
-  4. Set your timezone 🕥
-  5. Get a weekly summary of your activities 📊
-  6. Get a daily summary comparing today and yesterday 📅
-
-I can also provide you with general advice and estimate calories for your meals.
-`.trim();
+        if (isUserAccountReady) {
+          response = ALL_SET_MESSAGE;
         }
         return {
           isError: false,
@@ -419,6 +402,16 @@ I can also provide you with general advice and estimate calories for your meals.
           }
         })
       );
+
+      // onboarding: check if after the actions were taken, the user is ready to use the app
+      const nextUserState = await deps.getUserLatestState({
+        userId: params.userId,
+      });
+      const nextIsAccountReady = isUserReady(nextUserState);
+      if (nextIsAccountReady) {
+        actionsTaken.push('Account is ready to use the app!');
+        actionsTaken.push(`Prepared message for the user: ${ALL_SET_MESSAGE}`);
+      }
 
       // Stage 2 processing
       const {

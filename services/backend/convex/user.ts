@@ -34,6 +34,17 @@ export const _getTelegramUser = internalQuery({
   },
 });
 
+export const _getUser = internalQuery({
+  args: {
+    userId: v.id('user'),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error('User not found');
+    return user;
+  },
+});
+
 export const _createUser = internalMutation({
   args: user_convexSchema,
   handler: async (ctx, args) => {
@@ -74,22 +85,6 @@ export const _setUserTimezone = internalMutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, { timezone: args.timezone });
-  },
-});
-
-export const _getUserDetails = internalQuery({
-  args: {
-    userId: v.id('user'),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error('User not found');
-    return {
-      gender: user.gender,
-      yearOfBirth: user.yearOfBirth,
-      height: user.height,
-      weight: user.weight,
-    };
   },
 });
 

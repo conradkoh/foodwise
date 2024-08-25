@@ -7,6 +7,25 @@ import { z } from 'zod';
 
 export type User = z.infer<typeof user_zodSchema>;
 
+/**
+ * Check if the user is ready to use the app
+ * @param user
+ * @returns
+ */
+export function isUserReady(
+  user: Pick<User, 'timezone' | 'gender' | 'yearOfBirth' | 'height'>
+) {
+  return (
+    !!user.timezone && !!user.gender && !!user.yearOfBirth && !!user.height
+  );
+}
+
+/**
+ * Get the Basal Metabolic Rate (BMR) for the user
+ * @param user
+ * @param opts
+ * @returns
+ */
 export function getUserBMR(
   user: User,
   opts: { currentYear: number }

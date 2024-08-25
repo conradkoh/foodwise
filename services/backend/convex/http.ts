@@ -71,7 +71,6 @@ http.route({
             setUserHeight: bindMutation(ctx, internal.user._setUserHeight),
             setUserGender: bindMutation(ctx, internal.user._setUserGender),
             setUserAge: bindMutation(ctx, internal.user._setUserAge),
-            getUserDetails: bindQuery(ctx, internal.user._getUserDetails),
             recordUserMealAndCalories: bindMutation(
               ctx,
               internal.user._recordUserMealAndCalories
@@ -95,6 +94,7 @@ http.route({
               });
               return result;
             },
+            getUserLatestState: bindQuery(ctx, internal.user._getUser),
           })({
             userId: user._id,
             inputText: message.message?.text,
