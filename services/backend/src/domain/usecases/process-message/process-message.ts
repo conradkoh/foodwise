@@ -226,7 +226,23 @@ I can also provide you with general advice and estimate calories for your meals.
                 timestamp,
               });
               actionsTaken.push(
-                `Recorded meal: ${action.meal} (${Math.round(totalCalories.kcal)} kcal)`
+                `Recorded meal with calories: (${Math.round(totalCalories.kcal)} kcal)`
+              );
+
+              // Fetch and display daily summary
+              const dailySummary = await deps.getLastNDaysSummary({
+                numDays: 1,
+                userId: params.userId,
+                endOfCurrentDayTs,
+                userTz: params.userTz,
+              });
+              const summaryText = formatSummary({
+                type: 'daily',
+                summary: dailySummary,
+                userTz: params.userTz,
+              });
+              actionsTaken.push(
+                `Daily progress after recording meal:\n${summaryText}`
               );
               break;
             }
@@ -247,6 +263,22 @@ I can also provide you with general advice and estimate calories for your meals.
               });
               actionsTaken.push(
                 `Recorded activity: ${action.activity} (${Math.round(averageCaloriesBurned)} ${action.caloriesBurned.units} burned)`
+              );
+
+              // Fetch and display daily summary
+              const dailySummary = await deps.getLastNDaysSummary({
+                numDays: 1,
+                userId: params.userId,
+                endOfCurrentDayTs,
+                userTz: params.userTz,
+              });
+              const summaryText = formatSummary({
+                type: 'daily',
+                summary: dailySummary,
+                userTz: params.userTz,
+              });
+              actionsTaken.push(
+                `Daily progress after recording activity:\n${summaryText}`
               );
               break;
             }
