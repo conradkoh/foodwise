@@ -147,26 +147,24 @@ Plain text only. Do not use markdown.
         const userDetails = await deps.getUserDetails({
           userId: params.userId,
         });
-        let response = `Welcome! To get started, please set your timezone. You can say something like "set my timezone to Singapore".`;
+        let response = `Welcome! To get started, please set your timezone. You can say something like "set my timezone to Singapore".
 
-        if (timezone) {
-          if (
-            !userDetails.gender ||
-            !userDetails.yearOfBirth ||
-            !userDetails.height
-          ) {
-            response = `
-Great! Now, I need some information to calculate your Basal Metabolic Rate (BMR). Please provide the following details:
+I also need some information to calculate your Basal Metabolic Rate (BMR). Please provide the following details:
 
 1. Your gender (male or female)
 2. Your age in years
 3. Your height in centimeters
 4. Your weight in kilograms
 
-You can respond with something like: "I'm a 30-year-old male, 175 cm tall."
-`;
-          } else {
-            response = `
+You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
+        // if the user has provided all the required information, we can proceed
+        if (
+          timezone &&
+          userDetails.gender &&
+          userDetails.yearOfBirth &&
+          userDetails.height
+        ) {
+          response = `
 You're all set! 👍🏼
 
 In this chat, I can help you with a variety of tasks to help you keep track of your health!
@@ -181,7 +179,6 @@ Here are some things I can help with:
 
 I can also provide you with general advice and estimate calories for your meals.
 `.trim();
-          }
         }
         return {
           isError: false,
