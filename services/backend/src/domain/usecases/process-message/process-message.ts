@@ -19,7 +19,6 @@ import { DateTime } from 'luxon';
 
 export const processMessage =
   (deps: {
-    // recordUserWeight: (weight: { value: number; units: 'kg' }) => Promise<void>;
     recordUserWeight: BoundMutation<typeof internal.user._recordUserWeight>;
     recordUserMealAndCalories: BoundMutation<
       typeof internal.user._recordUserMealAndCalories
@@ -77,16 +76,16 @@ Each user message can have multiple intentions. The following are the allowed in
 Respond with clear precise advice, favoring numbers and verified data backed by research.
 
 ### ENUM: ${INTENTS.ESTIMATE_CALORIES}
-Estimate the calories for the user's input.
+Estimate the calories for the user's input. Provide a range (min and max) for each item.
 
 ### ENUM: ${INTENTS.RECORD_WEIGHT}
 Extract user's weight information if provided.
 
 ### ENUM: ${INTENTS.RECORD_MEALS_AND_CALORIES}
-Extract the items the user has eaten and put in estimated calorie information.
+Extract the items the user has eaten and put in estimated calorie information. Provide a range (min and max) for each item.
 
 ### ENUM: ${INTENTS.RECORD_ACTIVITIES_AND_BURN}
-Extract user's activity information and estimate calorie burn information if provided.
+Extract user's activity information and estimate calorie burn information if provided. Provide a range (min and max) for the calorie burn.
 
 ### ENUM: ${INTENTS.SET_TIMEZONE}
 Set the user's timezone. The timezone should be in a standard format (e.g., 'America/New_York', 'Europe/London').
@@ -194,44 +193,60 @@ I can also provide you with general advice and estimate calories for your meals.
             case INTENTS.RECORD_MEALS_AND_CALORIES: {
               const totalCalories = action.items.reduce(
                 (state, item) => {
-                  switch (item.estimatedCalories.units) {
-                    case 'kcal': {
-                      state['kcal'] += item.estimatedCalories.value;
-                      break;
-                    }
-                    default: {
-                      // exhaustive switch for units
-                      const _: never = item.estimatedCalories.units;
-                    }
-                  }
+                  const average =
+                    (item.estimatedCalories.min + item.estimatedCalories.max) /
+                    2;
+                  state['kcal'] += average;
                   return state;
                 },
                 {
                   'kcal': 0,
                 }
               );
+              const { intent: _, ...args } = action;
               await deps.recordUserMealAndCalories({
-                ...action,
+                ...args,
                 totalCalories: {
-                  value: totalCalories['kcal'],
+                  value: Math.round(totalCalories['kcal']),
+                  units: 'kcal',
+                },
+                items: action.items.map((item) => ({
+                  ...item,
+                  estimatedCalories: {
+                    value:
+                      Math.round(
+                        item.estimatedCalories.min + item.estimatedCalories.max
+                      ) / 2,
+                    min: item.estimatedCalories.min,
+                    max: item.estimatedCalories.max,
+                    units: item.estimatedCalories.units,
+                  },
+                })),
+                userId: params.userId,
+                timestamp,
+              });
+              actionsTaken.push(
+                `Recorded meal: ${action.meal} (${Math.round(totalCalories.kcal)} kcal)`
+              );
+              break;
+            }
+            case INTENTS.RECORD_ACTIVITIES_AND_BURN: {
+              const averageCaloriesBurned =
+                (action.caloriesBurned.min + action.caloriesBurned.max) / 2;
+              const { intent: _, ...args } = action;
+              await deps.recordActivityAndBurn({
+                ...args,
+                caloriesBurned: {
+                  value: Math.round(averageCaloriesBurned),
+                  min: action.caloriesBurned.min,
+                  max: action.caloriesBurned.max,
                   units: 'kcal',
                 },
                 userId: params.userId,
                 timestamp,
               });
               actionsTaken.push(
-                `Recorded meal: ${action.meal} (${totalCalories.kcal} kcal)`
-              );
-              break;
-            }
-            case INTENTS.RECORD_ACTIVITIES_AND_BURN: {
-              await deps.recordActivityAndBurn({
-                ...action,
-                userId: params.userId,
-                timestamp,
-              });
-              actionsTaken.push(
-                `Recorded activity: ${action.activity} (${action.caloriesBurned.value} ${action.caloriesBurned.units} burned)`
+                `Recorded activity: ${action.activity} (${Math.round(averageCaloriesBurned)} ${action.caloriesBurned.units} burned)`
               );
               break;
             }
@@ -242,16 +257,10 @@ I can also provide you with general advice and estimate calories for your meals.
             case INTENTS.ESTIMATE_CALORIES: {
               const totalCalories = action.items.reduce(
                 (state, item) => {
-                  switch (item.estimatedCalories.units) {
-                    case 'kcal': {
-                      state['kcal'] += item.estimatedCalories.value;
-                      break;
-                    }
-                    default: {
-                      // exhaustive switch for units
-                      const _: never = item.estimatedCalories.units;
-                    }
-                  }
+                  const average =
+                    (item.estimatedCalories.min + item.estimatedCalories.max) /
+                    2;
+                  state['kcal'] += average;
                   return state;
                 },
                 {
@@ -260,17 +269,18 @@ I can also provide you with general advice and estimate calories for your meals.
               );
               actionsTaken.push(
                 [
-                  `Estimated calories: ${totalCalories.kcal} kcal`,
+                  `Estimated calories: ${Math.round(totalCalories.kcal)} kcal`,
                   ...action.items.map((item) => [
-                    `  - ${item.name}: ${item.estimatedCalories.value} ${item.estimatedCalories.units}`,
+                    `  - ${item.name}: ${item.estimatedCalories.min}-${item.estimatedCalories.max} ${item.estimatedCalories.units}`,
                   ]),
                 ].join('\n')
               );
               break;
             }
             case INTENTS.SET_TIMEZONE: {
+              const { intent: _, ...args } = action;
               await deps.setUserTimezone({
-                ...action,
+                ...args,
                 userId: params.userId,
               });
               actionsTaken.push(`Set timezone: ${action.timezone}`);
@@ -308,7 +318,9 @@ I can also provide you with general advice and estimate calories for your meals.
               break;
             }
             case INTENTS.EDIT_PREVIOUS_ACTION: {
-              actionsTaken.push("Editing previous actions is not currently supported. I apologize for the inconvenience.");
+              actionsTaken.push(
+                'Editing previous actions is not currently supported. I apologize for the inconvenience.'
+              );
               break;
             }
             default: {

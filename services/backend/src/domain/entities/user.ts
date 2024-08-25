@@ -1,4 +1,5 @@
 import { zid, zodToConvex } from '@/utils/convex';
+import { min } from 'effect/Order';
 import { z } from 'zod';
 //========================================
 //User
@@ -49,6 +50,8 @@ const userMeal_zodSchema = z.object({
       name: z.string(),
       estimatedCalories: z.object({
         value: z.number(),
+        min: z.number(),
+        max: z.number(),
         units: z.literal('kcal'),
       }),
     })
@@ -69,6 +72,8 @@ const userActivity_zodSchema = z.object({
   activity: z.string(),
   caloriesBurned: z.object({
     value: z.number(),
+    min: z.number(),
+    max: z.number(),
     units: z.literal('kcal'),
   }),
   timestamp: z.number(),

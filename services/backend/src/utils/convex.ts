@@ -15,7 +15,14 @@ export type FunctionArgs<FunctionRefAny> = FunctionRefAny extends
   | FunctionReference<'query', 'internal' | 'public'>
   ? OptionalRestArgs<FunctionRefAny>
   : never;
-
+/**
+ * Utility type to ensure that additional properties are not allowed
+ */
+type Exact<T, Shape> = T extends Shape
+  ? Exclude<keyof T, keyof Shape> extends never
+    ? T
+    : never
+  : never;
 //========================================
 // Bind Mutation
 //========================================

@@ -28,13 +28,13 @@ const mealAction = baseAction.extend({
   // .describe(
   //   "Extract user's meal and estimate calorie intake information if provided."
   // ),
-  meal: z.string(), // .describe('The name or description of the meal'),
   items: z.array(
     z.object({
       name: z.string(),
       estimatedCalories: z.object({
         units: z.literal('kcal'),
-        value: z.number(), // .describe('The estimated calorie content of the meal'),
+        min: z.number(), // .describe('The minimum estimated calorie content'),
+        max: z.number(), // .describe('The maximum estimated calorie content'),
       }),
     })
   ),
@@ -47,8 +47,9 @@ const activityAction = baseAction.extend({
   // ),
   activity: z.string(), // .describe('The name or description of the activity'),
   caloriesBurned: z.object({
-    value: z.number(), // .describe('The estimated calorie burn'),
-    units: z.literal('kcal'), // .describe('The unit of calorie burn measurement'),
+    units: z.literal('kcal'),
+    min: z.number(), // .describe('The minimum estimated calorie content'),
+    max: z.number(), // .describe('The maximum estimated calorie content'),
   }),
 });
 
@@ -63,13 +64,13 @@ const generalAdviceAction = baseAction.extend({
 const estimateCaloriesAction = baseAction.extend({
   intent: z.literal(INTENTS.ESTIMATE_CALORIES),
   // .describe("Estimate the calories for the user's meal."),
-  meal: z.string().describe('The name or description of the meal'),
   items: z.array(
     z.object({
       name: z.string(),
       estimatedCalories: z.object({
         units: z.literal('kcal'),
-        value: z.number(), // .describe('The estimated calorie content of the meal'),
+        min: z.number(), // .describe('The minimum estimated calorie content'),
+        max: z.number(), // .describe('The maximum estimated calorie content'),
       }),
     })
   ),
