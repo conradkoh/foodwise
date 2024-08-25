@@ -68,6 +68,10 @@ http.route({
               ctx,
               internal.user._recordUserWeight
             ),
+            setUserHeight: bindMutation(ctx, internal.user._setUserHeight),
+            setUserGender: bindMutation(ctx, internal.user._setUserGender),
+            setUserAge: bindMutation(ctx, internal.user._setUserAge),
+            getUserDetails: bindQuery(ctx, internal.user._getUserDetails),
             recordUserMealAndCalories: bindMutation(
               ctx,
               internal.user._recordUserMealAndCalories
@@ -78,12 +82,12 @@ http.route({
             ),
             setUserTimezone: bindMutation(ctx, internal.user._setUserTimezone),
             getUserTimezone: async () => user.timezone,
-            getLastNDaysSummary: (args) => {
+            getLastNDaysSummary: async (args) => {
               const queryFn = bindQuery(
                 ctx,
                 internal.user._getLastNDaysSummary
               );
-              const result = queryFn(args);
+              const result = await queryFn(args);
               fetchedData.push({
                 name: 'getLastNDaysSummary',
                 input: args,

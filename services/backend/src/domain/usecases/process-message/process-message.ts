@@ -29,6 +29,10 @@ export const processMessage =
     getUserTimezone: () => Promise<string | undefined>;
     setUserTimezone: BoundMutation<typeof internal.user._setUserTimezone>;
     getLastNDaysSummary: BoundQuery<typeof internal.user._getLastNDaysSummary>;
+    getUserDetails: BoundQuery<typeof internal.user._getUserDetails>;
+    setUserGender: BoundMutation<typeof internal.user._setUserGender>;
+    setUserAge: BoundMutation<typeof internal.user._setUserAge>;
+    setUserHeight: BoundMutation<typeof internal.user._setUserHeight>;
   }) =>
   async (params: {
     userId: Id<'user'>;
@@ -101,6 +105,15 @@ Compare today's performance with yesterday's.
 ### ENUM: ${INTENTS.EDIT_PREVIOUS_ACTION}
 Detect if the user wants to edit a previous action (activity, meal, or weight). Inform the user that this feature is not currently supported.
 
+### ENUM: ${INTENTS.SET_USER_GENDER}
+Set the user's gender (male or female). This is used for BMR calculation.
+
+### ENUM: ${INTENTS.SET_USER_AGE}
+Set the user's age in years. This is used for BMR calculation.
+
+### ENUM: ${INTENTS.SET_USER_HEIGHT}
+Set the user's height in centimeters. This is used for BMR calculation.
+
 ## Examples
 ### Summary for last week or daily comparison
 Date: 2023-05-01
@@ -131,14 +144,34 @@ Plain text only. Do not use markdown.
       // Handle /start command
       if (params.inputText.trim().toLowerCase() === '/start') {
         const timezone = await deps.getUserTimezone();
+        const userDetails = await deps.getUserDetails({
+          userId: params.userId,
+        });
         let response = `Welcome! To get started, please set your timezone. You can say something like "set my timezone to Singapore".`;
+
         if (timezone) {
-          response = `
-You're all good to go! 👍🏼
+          if (
+            !userDetails.gender ||
+            !userDetails.yearOfBirth ||
+            !userDetails.height
+          ) {
+            response = `
+Great! Now, I need some information to calculate your Basal Metabolic Rate (BMR). Please provide the following details:
+
+1. Your gender (male or female)
+2. Your age in years
+3. Your height in centimeters
+4. Your weight in kilograms
+
+You can respond with something like: "I'm a 30-year-old male, 175 cm tall."
+`;
+          } else {
+            response = `
+You're all set! 👍🏼
 
 In this chat, I can help you with a variety of tasks to help you keep track of your health!
 
-Here are some things I can help with
+Here are some things I can help with:
   1. Keep track of your weight ⚖️
   2. Keep track of your meals and calories 🥗🌯
   3. Keep track of your activities and calorie burn 🏃🏻‍♂️🏃🏽‍♀️🔥
@@ -148,6 +181,7 @@ Here are some things I can help with
 
 I can also provide you with general advice and estimate calories for your meals.
 `.trim();
+          }
         }
         return {
           isError: false,
@@ -352,6 +386,32 @@ I can also provide you with general advice and estimate calories for your meals.
             case INTENTS.EDIT_PREVIOUS_ACTION: {
               actionsTaken.push(
                 'Editing previous actions is not currently supported. I apologize for the inconvenience.'
+              );
+              break;
+            }
+            case INTENTS.SET_USER_GENDER: {
+              await deps.setUserGender({
+                userId: params.userId,
+                gender: action.gender,
+              });
+              actionsTaken.push(`Set user gender: ${action.gender}`);
+              break;
+            }
+            case INTENTS.SET_USER_AGE: {
+              await deps.setUserAge({
+                userId: params.userId,
+                age: action.age,
+              });
+              actionsTaken.push(`Set user age: ${action.age}`);
+              break;
+            }
+            case INTENTS.SET_USER_HEIGHT: {
+              await deps.setUserHeight({
+                userId: params.userId,
+                height: action.height,
+              });
+              actionsTaken.push(
+                `Set user height: ${action.height.value} ${action.height.units}`
               );
               break;
             }

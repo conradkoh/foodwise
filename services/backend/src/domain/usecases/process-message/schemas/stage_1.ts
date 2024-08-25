@@ -99,6 +99,24 @@ const editPreviousActionAction = baseAction.extend({
   // .describe("Edit a previous action (activity, meal, or weight)"),
 });
 
+const setUserGenderAction = baseAction.extend({
+  intent: z.literal(INTENTS.SET_USER_GENDER),
+  gender: z.union([z.literal('male'), z.literal('female')]),
+});
+
+const setUserAgeAction = baseAction.extend({
+  intent: z.literal(INTENTS.SET_USER_AGE),
+  age: z.number(),
+});
+
+const setUserHeightAction = baseAction.extend({
+  intent: z.literal(INTENTS.SET_USER_HEIGHT),
+  height: z.object({
+    value: z.number(),
+    units: z.literal('cm'),
+  }),
+});
+
 export const stage1Output_zodSchema = z.object({
   actions: z.array(
     z.union([
@@ -111,6 +129,9 @@ export const stage1Output_zodSchema = z.object({
       getWeeklySummaryAction,
       getDailySummaryAction,
       editPreviousActionAction,
+      setUserGenderAction,
+      setUserAgeAction,
+      setUserHeightAction,
     ])
   ),
   // .describe("List of actions to be taken based on the user's input"),

@@ -1,4 +1,6 @@
 import {
+  getUserBMR,
+  User,
   user_convexSchema,
   UserActivity,
   userActivity_convexSchema,
@@ -46,6 +48,8 @@ export const _recordUserWeight = internalMutation({
   args: userWeight_convexSchema,
   handler: async (ctx, args) => {
     await ctx.db.insert('userWeight', args);
+    // Update the user's current weight
+    await ctx.db.patch(args.userId, { weight: args.weight });
   },
 });
 
@@ -73,6 +77,56 @@ export const _setUserTimezone = internalMutation({
   },
 });
 
+export const _getUserDetails = internalQuery({
+  args: {
+    userId: v.id('user'),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error('User not found');
+    return {
+      gender: user.gender,
+      yearOfBirth: user.yearOfBirth,
+      height: user.height,
+      weight: user.weight,
+    };
+  },
+});
+
+export const _setUserGender = internalMutation({
+  args: {
+    userId: v.id('user'),
+    gender: v.union(v.literal('male'), v.literal('female')),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { gender: args.gender });
+  },
+});
+
+export const _setUserAge = internalMutation({
+  args: {
+    userId: v.id('user'),
+    age: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const currentYear = new Date().getFullYear();
+    await ctx.db.patch(args.userId, { yearOfBirth: currentYear - args.age });
+  },
+});
+
+export const _setUserHeight = internalMutation({
+  args: {
+    userId: v.id('user'),
+    height: v.object({
+      value: v.number(),
+      units: v.literal('cm'),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, { height: args.height });
+  },
+});
+
 export const _getLastNDaysSummary = internalQuery({
   args: {
     userId: v.id('user'),
@@ -92,10 +146,10 @@ export const _getLastNDaysSummary = internalQuery({
       numDays,
       endOfCurrentDayTs,
     });
-
     return summary;
   },
 });
+
 /**
  * Create summaries rolled up daily
  * @param ctx
@@ -145,9 +199,14 @@ async function getSummariesRollupDaily(
     )
     .collect();
 
+  const user = await ctx.db.get(userId);
+  if (!user) throw new Error('User not found');
+
+  const bmr = getUserBMR(user, { currentYear: new Date().getFullYear() }); //TODO: This estimate technically can be better since weight, year and height are mutable attributes
+
   const summaries: DailySummary[] = computeDailySummary({
     userTz,
-    baseBurn: 1600, //TODO: get from user
+    baseBurn: bmr.bmr,
     endTimestamp: toTimestamp,
     startTimestamp: fromTimestamp,
     meals,
@@ -165,7 +224,10 @@ async function getSummariesRollupDaily(
  */
 function computeDailySummary(params: {
   userTz: string;
-  baseBurn: number;
+  baseBurn: {
+    value: number;
+    units: 'kcal';
+  };
   endTimestamp: number;
   startTimestamp: number;
   meals: UserMeal[];
@@ -176,6 +238,11 @@ function computeDailySummary(params: {
     params;
   const oneDayInMs = 24 * 60 * 60 * 1000;
   const numDays = Math.ceil((endTimestamp - startTimestamp) / oneDayInMs);
+
+  // validate units
+  if (params.baseBurn.units !== 'kcal') {
+    throw new Error('Base burn units must be in kcal');
+  }
 
   const summaries: DailySummary[] = [];
 
@@ -202,9 +269,13 @@ function computeDailySummary(params: {
       0
     );
 
-    // Assuming a base metabolic rate of 1600 kcal
     const baseBurn = params.baseBurn;
-    const caloriesOut = baseBurn + activityBurn;
+    const caloriesOut = baseBurn.value + activityBurn;
+    console.log({
+      caloriesOut,
+      baseBurn,
+      activityBurn,
+    });
 
     const deficit = caloriesOut - caloriesIn;
 
