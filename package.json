@@ -7,7 +7,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "dev": "yarn workspaces run dev"
+    "dev": "yarn workspaces run dev",
+    "deploy": "yarn workspaces run deploy"
   },
   "workspaces": [
     "apps/*",
