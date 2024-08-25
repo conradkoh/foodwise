@@ -9,6 +9,7 @@ const baseAction = z.object({
     INTENTS.RECORD_MEALS_AND_CALORIES,
     INTENTS.RECORD_ACTIVITIES_AND_BURN,
     INTENTS.GET_WEEKLY_SUMMARY,
+    INTENTS.EDIT_PREVIOUS_ACTION,
   ]),
   // .describe('The intent of the action'),
 });
@@ -92,6 +93,11 @@ const getDailySummaryAction = baseAction.extend({
   // .describe("Get the user's daily summary of activities, calories, and weight changes."),
 });
 
+const editPreviousActionAction = baseAction.extend({
+  intent: z.literal(INTENTS.EDIT_PREVIOUS_ACTION),
+  // .describe("Edit a previous action (activity, meal, or weight)"),
+});
+
 export const stage1Output_zodSchema = z.object({
   actions: z.array(
     z.union([
@@ -103,6 +109,7 @@ export const stage1Output_zodSchema = z.object({
       setTimezoneAction,
       getWeeklySummaryAction,
       getDailySummaryAction,
+      editPreviousActionAction,
     ])
   ),
   // .describe("List of actions to be taken based on the user's input"),

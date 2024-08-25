@@ -99,6 +99,9 @@ Include the provided daily breakdown in the reply.
 Generate a summary of the user's activity for today and yesterday, including calorie intake, burn, deficit, and weight measurements.
 Compare today's performance with yesterday's.
 
+### ENUM: ${INTENTS.EDIT_PREVIOUS_ACTION}
+Detect if the user wants to edit a previous action (activity, meal, or weight). Inform the user that this feature is not currently supported.
+
 ## Examples
 ### Summary for last week or daily comparison
 Date: 2023-05-01
@@ -302,6 +305,10 @@ I can also provide you with general advice and estimate calories for your meals.
               });
 
               actionsTaken.push(summaryText);
+              break;
+            }
+            case INTENTS.EDIT_PREVIOUS_ACTION: {
+              actionsTaken.push("Editing previous actions is not currently supported. I apologize for the inconvenience.");
               break;
             }
             default: {
