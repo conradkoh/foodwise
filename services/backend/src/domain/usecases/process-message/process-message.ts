@@ -1,8 +1,20 @@
 import { MessageUsageMetric } from '@/domain/entities/message';
 import { INTENTS } from '@/domain/usecases/process-message/intent';
 import {
+  ActivityAction,
+  DailySummaryAction,
+  EditPreviousActionAction,
+  EstimateCaloriesAction,
+  GeneralAdviceAction,
+  MealAction,
+  SetTimezoneAction,
+  SetUserAgeAction,
+  SetUserGenderAction,
+  SetUserHeightAction,
   Stage1Output,
   stage1Output_zodSchema,
+  WeeklySummaryAction,
+  WeightAction,
 } from '@/domain/usecases/process-message/schemas/stage_1';
 import {
   Stage2Output,
@@ -138,13 +150,20 @@ async function handleStage1Actions(
     [INTENTS.SET_USER_GENDER]: handleSetUserGender,
     [INTENTS.SET_USER_AGE]: handleSetUserAge,
     [INTENTS.SET_USER_HEIGHT]: handleSetUserHeight,
-  };
+  } as const;
 
   await Promise.all(
     stage1Output.actions.map(async (action) => {
-      const handler = actionHandlers[action.intent];
+      const intent = action.intent;
+      const handler = actionHandlers[intent];
       if (handler) {
-        await handler(deps, params, action, resultBuilder, endOfCurrentDayTs);
+        await handler(
+          deps,
+          params,
+          action as any,
+          resultBuilder,
+          endOfCurrentDayTs
+        );
       }
     })
   );
@@ -209,7 +228,7 @@ function handleError(
 async function handleRecordWeight(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: WeightAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   await deps.recordUserWeight({
@@ -225,12 +244,12 @@ async function handleRecordWeight(
 async function handleRecordMealsAndCalories(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: MealAction,
   resultBuilder: ProcessMessageResultBuilder,
   endOfCurrentDayTs: number
 ) {
   const totalCalories = action.items.reduce(
-    (state: { kcal: number }, item: any) => {
+    (state: { kcal: number }, item) => {
       const average =
         (item.estimatedCalories.min + item.estimatedCalories.max) / 2;
       state.kcal += average;
@@ -245,7 +264,7 @@ async function handleRecordMealsAndCalories(
       value: Math.round(totalCalories.kcal),
       units: 'kcal',
     },
-    items: action.items.map((item: any) => ({
+    items: action.items.map((item) => ({
       ...item,
       estimatedCalories: {
         value: Math.round(
@@ -273,7 +292,7 @@ async function handleRecordMealsAndCalories(
 async function handleRecordActivitiesAndBurn(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: ActivityAction,
   resultBuilder: ProcessMessageResultBuilder,
   endOfCurrentDayTs: number
 ) {
@@ -305,7 +324,7 @@ async function handleRecordActivitiesAndBurn(
 function handleGetGeneralAdvice(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: GeneralAdviceAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   resultBuilder.addActionTaken(`Received advice: ${action.advice}`);
@@ -314,11 +333,11 @@ function handleGetGeneralAdvice(
 function handleEstimateCalories(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: EstimateCaloriesAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   const totalCalories = action.items.reduce(
-    (state: { kcal: number }, item: any) => {
+    (state: { kcal: number }, item) => {
       const average =
         (item.estimatedCalories.min + item.estimatedCalories.max) / 2;
       state.kcal += average;
@@ -330,7 +349,7 @@ function handleEstimateCalories(
     [
       `Estimated calories: ${Math.round(totalCalories.kcal)} kcal`,
       ...action.items.map(
-        (item: any) =>
+        (item) =>
           `  - ${item.name}: ${item.estimatedCalories.min}-${item.estimatedCalories.max} ${item.estimatedCalories.units}`
       ),
     ].join('\n')
@@ -340,7 +359,7 @@ function handleEstimateCalories(
 async function handleSetTimezone(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: SetTimezoneAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   const { intent: _, ...args } = action;
@@ -354,7 +373,7 @@ async function handleSetTimezone(
 async function handleGetWeeklySummary(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: WeeklySummaryAction,
   resultBuilder: ProcessMessageResultBuilder,
   endOfCurrentDayTs: number
 ) {
@@ -375,7 +394,7 @@ async function handleGetWeeklySummary(
 async function handleGetDailySummary(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: DailySummaryAction,
   resultBuilder: ProcessMessageResultBuilder,
   endOfCurrentDayTs: number
 ) {
@@ -396,7 +415,7 @@ async function handleGetDailySummary(
 function handleEditPreviousAction(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: EditPreviousActionAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   resultBuilder.addActionTaken(
@@ -407,7 +426,7 @@ function handleEditPreviousAction(
 async function handleSetUserGender(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: SetUserGenderAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   await deps.setUserGender({
@@ -420,7 +439,7 @@ async function handleSetUserGender(
 async function handleSetUserAge(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: SetUserAgeAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   await deps.setUserAge({
@@ -433,7 +452,7 @@ async function handleSetUserAge(
 async function handleSetUserHeight(
   deps: ProcessMessageDeps,
   params: ProcessMessageParams,
-  action: any,
+  action: SetUserHeightAction,
   resultBuilder: ProcessMessageResultBuilder
 ) {
   await deps.setUserHeight({
