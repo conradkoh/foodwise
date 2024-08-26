@@ -17,6 +17,7 @@ import type {
 import type * as http from "../http.js";
 import type * as message from "../message.js";
 import type * as migrate from "../migrate.js";
+import type * as system from "../system.js";
 import type * as telegram from "../telegram.js";
 import type * as user from "../user.js";
 
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   message: typeof message;
   migrate: typeof migrate;
+  system: typeof system;
   telegram: typeof telegram;
   user: typeof user;
 }>;
