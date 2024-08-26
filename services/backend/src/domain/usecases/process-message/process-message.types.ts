@@ -26,6 +26,7 @@ export type ProcessMessageResult =
   | {
       isError: false;
       message: string;
+      additionalMessages: string[];
       intermediates: {
         stage1Output: Stage1Output;
         stage2Output?: Stage2Output;
@@ -36,6 +37,7 @@ export type ProcessMessageResult =
   | {
       isError: true;
       message: string;
+      additionalMessages: string[];
       intermediates: {
         stage1Output?: Stage1Output;
         stage2Output?: Stage2Output;

@@ -17,9 +17,12 @@ import { ALL_SET_MESSAGE } from '@/domain/usecases/process-message/messages/all-
 import { isUserReady } from '@/domain/entities/user';
 import { SYSTEM_PROMPT } from '@/domain/usecases/process-message/prompts/system-prompt';
 import {
+  ProcessMessageDeps,
   ProcessMessageFunc,
+  ProcessMessageParams,
   ProcessMessageResult,
 } from '@/domain/usecases/process-message/process-message.types';
+import { PROGRESS_UPDATE_TEXT } from '@/domain/usecases/process-message/messages/progress-update';
 
 export const processMessage: ProcessMessageFunc =
   (deps) =>
@@ -37,6 +40,7 @@ export const processMessage: ProcessMessageFunc =
       stage2Usage?: Awaited<ReturnType<typeof openAIParse>>['usage'];
     } = {};
     let actionsTaken: string[] = [];
+    let additionalMessages: string[] = [];
 
     try {
       // Handle /start command
@@ -61,6 +65,7 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
         }
         return {
           isError: false,
+          additionalMessages,
           message: response,
           intermediates: {
             stage1Output: { actions: [] },
@@ -143,21 +148,15 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
                 `Recorded meal with calories: (${Math.round(totalCalories.kcal)} kcal)`
               );
 
-              // Fetch and display daily summary
-              const dailySummary = await deps.getLastNDaysSummary({
-                numDays: 1,
-                userId: params.userId,
-                endOfCurrentDayTs,
-                userTz: params.userTz,
-              });
-              const summaryText = formatSummary({
-                type: 'daily',
-                summary: dailySummary,
-                userTz: params.userTz,
-              });
-              actionsTaken.push(
-                `Daily progress after recording meal:\n${summaryText}`
+              // Fetch and display progress update
+              const update = await getProgressUpdate(
+                deps,
+                params,
+                endOfCurrentDayTs
               );
+              if (update) {
+                additionalMessages.push(update);
+              }
               break;
             }
             case INTENTS.RECORD_ACTIVITIES_AND_BURN: {
@@ -179,21 +178,15 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
                 `Recorded activity: ${action.activity} (${Math.round(averageCaloriesBurned)} ${action.caloriesBurned.units} burned)`
               );
 
-              // Fetch and display daily summary
-              const dailySummary = await deps.getLastNDaysSummary({
-                numDays: 1,
-                userId: params.userId,
-                endOfCurrentDayTs,
-                userTz: params.userTz,
-              });
-              const summaryText = formatSummary({
-                type: 'daily',
-                summary: dailySummary,
-                userTz: params.userTz,
-              });
-              actionsTaken.push(
-                `Daily progress after recording activity:\n${summaryText}`
+              // Fetch and display progress update
+              const update = await getProgressUpdate(
+                deps,
+                params,
+                endOfCurrentDayTs
               );
+              if (update) {
+                additionalMessages.push(update);
+              }
               break;
             }
             case INTENTS.GET_GENERAL_ADVICE: {
@@ -307,8 +300,8 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
       const nextUserState = await deps.getUserLatestState({
         userId: params.userId,
       });
-      const nextIsAccountReady = isUserReady(nextUserState);
-      if (nextIsAccountReady) {
+      const nextIsUserReady = isUserReady(nextUserState);
+      if (!isUserReady && nextIsUserReady) {
         actionsTaken.push('Account is ready to use the app!');
         actionsTaken.push(`Prepared message for the user: ${ALL_SET_MESSAGE}`);
       }
@@ -331,9 +324,10 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
 
       // set the intermediate
       intermediates.stage2Output = stage2Output;
-
+      console.log('additionalMessages:', additionalMessages);
       return {
         isError: false,
+        additionalMessages,
         message: stage2Output.response,
         intermediates: {
           stage1Output,
@@ -359,12 +353,43 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
         isError: true,
         message:
           "I couldn't process your request. Please try rephrasing your message.",
+        additionalMessages,
         intermediates,
         actionsTaken: [],
         usageMetrics,
       };
     }
   };
+
+/**
+ * Sends a progress update message to the user
+ * @param deps
+ * @param params
+ * @param endOfCurrentDayTs
+ * @param additionalMessages
+ */
+async function getProgressUpdate(
+  deps: ProcessMessageDeps,
+  params: ProcessMessageParams,
+  endOfCurrentDayTs: number
+) {
+  const dailySummary = await deps.getLastNDaysSummary({
+    numDays: 1,
+    userId: params.userId,
+    endOfCurrentDayTs,
+    userTz: params.userTz,
+  });
+
+  const summary = dailySummary.dailySummaries[0];
+  if (summary) {
+    return PROGRESS_UPDATE_TEXT({
+      date: summary.date,
+      caloriesIn: summary.caloriesIn?.value || 0,
+      caloriesOut: summary.caloriesOut?.value || 0,
+    });
+  }
+  return undefined;
+}
 
 function formatOpenAIUsage(
   usage: Awaited<ReturnType<typeof openAIParse>>['usage'],

@@ -58,6 +58,7 @@ http.route({
           isValid: false,
           intermediates: null as any | null,
           value: 'Failed to process message',
+          additionalMessages: [] as string[],
         };
         let usageMetrics: MessageUsageMetric[] | undefined = undefined;
         const fetchedData: { name: string; input: any; output: any }[] = [];
@@ -110,6 +111,7 @@ http.route({
                 isValid: false,
                 value: 'Failed to process message',
                 intermediates: agentResponse.intermediates,
+                additionalMessages: agentResponse.additionalMessages,
               };
               break;
             }
@@ -118,6 +120,7 @@ http.route({
                 isValid: true,
                 value: agentResponse.message,
                 intermediates: agentResponse.intermediates,
+                additionalMessages: agentResponse.additionalMessages,
               };
               break;
             }
@@ -128,6 +131,7 @@ http.route({
             isValid: false,
             value: 'Failed to process message',
             intermediates: null as any | null,
+            additionalMessages: [] as string[],
           };
         }
 
@@ -186,6 +190,13 @@ http.route({
         await sendMessage(ctx, { chatId }, async (tg) => {
           return [tg.text(response.value).parseMode('HTML')];
         });
+
+        // send additional messages
+        for (const message of response.additionalMessages) {
+          await sendMessage(ctx, { chatId }, async (tg) => {
+            return [tg.text(message).parseMode('HTML')];
+          });
+        }
       } catch (error) {
         console.error('failed to process message.', error);
       }
