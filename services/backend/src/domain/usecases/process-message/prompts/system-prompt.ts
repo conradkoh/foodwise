@@ -1,8 +1,8 @@
-import { INTENTS } from '@/domain/usecases/process-message/intent';
+import { INTENTS } from "@/domain/usecases/process-message/intent";
 
 export const SYSTEM_PROMPT = (p: {
-  currentDateStr: string;
-  stage: 'STAGE_1' | 'STAGE_2';
+	currentDateStr: string;
+	stage: "STAGE_1" | "STAGE_2";
 }) => `
 # HealthBot Agent Overview
 The HealthBot system processes a user's message and determines the steps to take. There are 2 stages
