@@ -134,6 +134,7 @@ http.route({
         // store the log of the user's message
         try {
           await ctx.runMutation(internal.message._write, {
+            userId: user?._id,
             source: 'telegram',
             status: response.isValid ? 'processed' : 'failed',
             rawPayload: message,

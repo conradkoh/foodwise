@@ -1,4 +1,4 @@
-import { zodToConvex } from 'convex-helpers/server/zod';
+import { zid, zodToConvex } from 'convex-helpers/server/zod';
 import { z } from 'zod';
 
 //========================================
@@ -35,6 +35,7 @@ export type Message = z.infer<typeof message_zodSchema>;
 
 // zod schema
 const message_zodSchema = z.object({
+  userId: z.optional(zid('user')),
   source: z.literal('telegram'),
   status: z.union([z.literal('processed'), z.literal('failed')]),
   rawPayload: z.any(),

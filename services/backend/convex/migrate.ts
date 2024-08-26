@@ -3,16 +3,21 @@ import { internalMutation } from 'convex/_generated/server';
 export const migrate = internalMutation({
   args: {},
   handler: async (ctx) => {
-    // set all userActivity.caloriesBurned.min and max to -1 for historical values
-    const records = await ctx.db.query('userActivity').collect();
-    for (const record of records) {
-      await ctx.db.patch(record._id, {
-        caloriesBurned: {
-          ...record.caloriesBurned,
-          min: -1,
-          max: -1,
-        },
-      });
+    //  add the user id to the messages table
+    const messages = await ctx.db.query('messages').collect();
+    for (const message of messages) {
+      const tgUserId = message.rawPayload.message.from.id;
+      const userId = await ctx.db
+        .query('user')
+        .withIndex('by_telegram_user_id', (q) =>
+          q.eq('telegram.userId', tgUserId)
+        )
+        .first();
+      if (tgUserId && userId) {
+        await ctx.db.patch(message._id, {
+          userId: userId._id,
+        });
+      }
     }
   },
 });
