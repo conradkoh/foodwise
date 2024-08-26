@@ -116,7 +116,7 @@ http.route({
             case false: {
               response = {
                 isValid: true,
-                value: agentResponse.intermediates.stage2Output?.response,
+                value: agentResponse.message,
                 intermediates: agentResponse.intermediates,
               };
               break;

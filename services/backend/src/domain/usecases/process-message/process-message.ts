@@ -12,56 +12,18 @@ import { openAIParse } from '@/utils/openai';
 import { z } from 'zod';
 
 import { GetLastNDaysSummaryResult } from '@/domain/usecases/get-summary';
-import { BoundMutation, BoundQuery } from '@/utils/convex';
-import { internal } from 'convex/_generated/api';
-import { Id } from 'convex/_generated/dataModel';
 import { DateTime } from 'luxon';
 import { ALL_SET_MESSAGE } from '@/domain/usecases/process-message/messages/all-set';
 import { isUserReady } from '@/domain/entities/user';
 import { SYSTEM_PROMPT } from '@/domain/usecases/process-message/prompts/system-prompt';
+import {
+  ProcessMessageFunc,
+  ProcessMessageResult,
+} from '@/domain/usecases/process-message/process-message.types';
 
-export const processMessage =
-  (deps: {
-    recordUserWeight: BoundMutation<typeof internal.user._recordUserWeight>;
-    recordUserMealAndCalories: BoundMutation<
-      typeof internal.user._recordUserMealAndCalories
-    >;
-    recordActivityAndBurn: BoundMutation<
-      typeof internal.user._recordActivityAndBurn
-    >;
-    getUserTimezone: () => Promise<string | undefined>;
-    setUserTimezone: BoundMutation<typeof internal.user._setUserTimezone>;
-    getLastNDaysSummary: BoundQuery<typeof internal.user._getLastNDaysSummary>;
-    setUserGender: BoundMutation<typeof internal.user._setUserGender>;
-    setUserAge: BoundMutation<typeof internal.user._setUserAge>;
-    setUserHeight: BoundMutation<typeof internal.user._setUserHeight>;
-    getUserLatestState: BoundQuery<typeof internal.user._getUser>;
-  }) =>
-  async (params: {
-    userId: Id<'user'>;
-    inputText: string;
-    userTz: string;
-    currentDateStr: string;
-  }): Promise<
-    | {
-        isError: false;
-        intermediates: {
-          stage1Output: Stage1Output;
-          stage2Output: Stage2Output;
-        };
-        actionsTaken: string[];
-        usageMetrics: MessageUsageMetric[];
-      }
-    | {
-        isError: true;
-        intermediates: {
-          stage1Output?: Stage1Output;
-          stage2Output?: Stage2Output;
-        };
-        actionsTaken: string[];
-        usageMetrics: MessageUsageMetric[];
-      }
-  > => {
+export const processMessage: ProcessMessageFunc =
+  (deps) =>
+  async (params): Promise<ProcessMessageResult> => {
     const timestamp = DateTime.now().toMillis();
     const endOfCurrentDayTs = DateTime.now()
       .setZone(params.userTz)
@@ -99,6 +61,7 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
         }
         return {
           isError: false,
+          message: response,
           intermediates: {
             stage1Output: { actions: [] },
             stage2Output: {
@@ -371,6 +334,7 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
 
       return {
         isError: false,
+        message: stage2Output.response,
         intermediates: {
           stage1Output,
           stage2Output,
@@ -393,6 +357,8 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
       console.error('failed to process message.', error, intermediates);
       return {
         isError: true,
+        message:
+          "I couldn't process your request. Please try rephrasing your message.",
         intermediates,
         actionsTaken: [],
         usageMetrics,
