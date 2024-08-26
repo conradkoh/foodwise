@@ -34,22 +34,13 @@ export const processMessage: ProcessMessageFunc =
       .endOf('day')
       .toMillis();
 
-    let intermediates: {
-      stage1Output?: z.infer<typeof stage1Output_zodSchema>;
-      stage2Output?: z.infer<typeof stage2Output_zodSchema>;
-      stage1Usage?: Awaited<ReturnType<typeof openAIParse>>['usage'];
-      stage2Usage?: Awaited<ReturnType<typeof openAIParse>>['usage'];
-    } = {};
-
     try {
       // Handle /start command
       if (params.inputText.trim().toLowerCase() === '/start') {
         return handleStartCommand(deps, params, resultBuilder);
       }
 
-      const stage1Result = await processStage1(deps, params, resultBuilder);
-      intermediates.stage1Output = stage1Result.stage1Output;
-      intermediates.stage1Usage = stage1Result.stage1Usage;
+      const stage1Result = await processStage1(deps, resultBuilder)(params);
 
       await handleStage1Actions(
         deps,
@@ -59,16 +50,13 @@ export const processMessage: ProcessMessageFunc =
         endOfCurrentDayTs
       );
 
-      const stage2Result = await processStage2(deps, params, resultBuilder);
-      intermediates.stage2Output = stage2Result.stage2Output;
-      intermediates.stage2Usage = stage2Result.stage2Usage;
-
+      const stage2Result = await processStage2(deps, resultBuilder)(params);
       resultBuilder.setMessage(stage2Result.stage2Output.response);
 
       return resultBuilder.build();
     } catch (error) {
-      console.error('failed to process message.', error, intermediates);
-      return handleError(intermediates, resultBuilder);
+      console.error('failed to process message.', error);
+      return handleError(resultBuilder);
     }
   };
 
@@ -104,31 +92,31 @@ You can respond with something like: "I'm a 30-year-old male, 175 cm tall."`;
     .build();
 }
 
-async function processStage1(
-  deps: ProcessMessageDeps,
-  params: ProcessMessageParams,
-  resultBuilder: ProcessMessageResultBuilder
-) {
-  const {
-    response: { data: stage1Output },
-    usage: stage1Usage,
-  } = await openAIParse({
-    systemPrompt: SYSTEM_PROMPT({
-      currentDateStr: params.currentDateStr,
-      stage: 'STAGE_1',
-    }),
-    text: params.inputText,
-    schema: {
-      name: 'user_health_information_stage_1',
-      zod: stage1Output_zodSchema,
-    },
-  });
+const processStage1 =
+  (deps: ProcessMessageDeps, resultBuilder: ProcessMessageResultBuilder) =>
+  async (params: ProcessMessageParams) => {
+    const {
+      response: { data: stage1Output },
+      usage: stage1Usage,
+    } = await openAIParse({
+      systemPrompt: SYSTEM_PROMPT({
+        currentDateStr: params.currentDateStr,
+        stage: 'STAGE_1',
+      }),
+      text: params.inputText,
+      schema: {
+        name: 'user_health_information_stage_1',
+        zod: stage1Output_zodSchema,
+      },
+    });
 
-  resultBuilder.setStage1Output(stage1Output);
-  resultBuilder.addUsageMetric(formatOpenAIUsage(stage1Usage, 'Stage 1 Usage'));
+    resultBuilder.setStage1Output(stage1Output);
+    resultBuilder.addUsageMetric(
+      formatOpenAIUsage(stage1Usage, 'Stage 1 Usage')
+    );
 
-  return { stage1Output, stage1Usage };
-}
+    return { stage1Output, stage1Usage };
+  };
 
 async function handleStage1Actions(
   deps: ProcessMessageDeps,
@@ -152,11 +140,6 @@ async function handleStage1Actions(
     [INTENTS.SET_USER_HEIGHT]: handleSetUserHeight,
   };
 
-  const userPreprocessingState = await deps.getUserLatestState({
-    userId: params.userId,
-  });
-
-  // processing state
   await Promise.all(
     stage1Output.actions.map(async (action) => {
       const handler = actionHandlers[action.intent];
@@ -166,15 +149,14 @@ async function handleStage1Actions(
     })
   );
 
-  const userPostProcessingState = await deps.getUserLatestState({
+  // onboarding: check if after the actions were taken, the user is ready to use the app
+  const nextUserState = await deps.getUserLatestState({
     userId: params.userId,
   });
-
-  // onboarding: check if after the actions were taken, the user is ready to use the app
+  const nextIsUserReady = isUserReady(nextUserState);
   if (
-    // the user transitioned from not ready to ready
-    !isUserReady(userPreprocessingState) &&
-    isUserReady(userPostProcessingState)
+    !isUserReady(await deps.getUserLatestState({ userId: params.userId })) &&
+    nextIsUserReady
   ) {
     resultBuilder.addActionTaken('Account is ready to use the app!');
     resultBuilder.addActionTaken(
@@ -183,54 +165,38 @@ async function handleStage1Actions(
   }
 }
 
-async function processStage2(
-  deps: ProcessMessageDeps,
-  params: ProcessMessageParams,
-  resultBuilder: ProcessMessageResultBuilder
-) {
-  const {
-    response: { data: stage2Output },
-    usage: stage2Usage,
-  } = await openAIParse({
-    systemPrompt: SYSTEM_PROMPT({
-      currentDateStr: params.currentDateStr,
-      stage: 'STAGE_2',
-    }),
-    text: JSON.stringify({
-      userInput: params.inputText,
-      actionsTaken: resultBuilder.build().actionsTaken,
-    }),
-    schema: {
-      name: 'user_health_information_stage_2',
-      zod: stage2Output_zodSchema,
-    },
-  });
+const processStage2 =
+  (deps: ProcessMessageDeps, resultBuilder: ProcessMessageResultBuilder) =>
+  async (params: ProcessMessageParams) => {
+    const {
+      response: { data: stage2Output },
+      usage: stage2Usage,
+    } = await openAIParse({
+      systemPrompt: SYSTEM_PROMPT({
+        currentDateStr: params.currentDateStr,
+        stage: 'STAGE_2',
+      }),
+      text: JSON.stringify({
+        userInput: params.inputText,
+        actionsTaken: resultBuilder.build().actionsTaken,
+      }),
+      schema: {
+        name: 'user_health_information_stage_2',
+        zod: stage2Output_zodSchema,
+      },
+    });
 
-  resultBuilder.setStage2Output(stage2Output);
-  resultBuilder.addUsageMetric(formatOpenAIUsage(stage2Usage, 'Stage 2 Usage'));
+    resultBuilder.setStage2Output(stage2Output);
+    resultBuilder.addUsageMetric(
+      formatOpenAIUsage(stage2Usage, 'Stage 2 Usage')
+    );
 
-  return { stage2Output, stage2Usage };
-}
+    return { stage2Output, stage2Usage };
+  };
 
 function handleError(
-  intermediates: {
-    stage1Usage?: Awaited<ReturnType<typeof openAIParse>>['usage'];
-    stage2Usage?: Awaited<ReturnType<typeof openAIParse>>['usage'];
-  },
   resultBuilder: ProcessMessageResultBuilder
 ): ProcessMessageResult {
-  const { stage1Usage, stage2Usage } = intermediates;
-  if (stage1Usage) {
-    resultBuilder.addUsageMetric(
-      formatOpenAIUsage(stage1Usage, 'Stage 1 usage')
-    );
-  }
-  if (stage2Usage) {
-    resultBuilder.addUsageMetric(
-      formatOpenAIUsage(stage2Usage, 'Stage 2 usage')
-    );
-  }
-
   return resultBuilder
     .setIsError(true)
     .setMessage(
