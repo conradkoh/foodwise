@@ -1,5 +1,6 @@
 import { SystemUsage } from '@/domain/entities/system';
 import { internal } from 'convex/_generated/api';
+import { Id } from 'convex/_generated/dataModel';
 import { internalAction, internalQuery } from 'convex/_generated/server';
 import { v } from 'convex/values';
 import { DateTime } from 'luxon';
@@ -31,14 +32,36 @@ export const usageReport = internalAction({
     for (const monthlyUsage of usages) {
       report += `\n  Month: ${monthlyUsage.cycle.year}-${monthlyUsage.cycle.month}`;
       if (monthlyUsage.totalCost.length === 0) {
-        report += `\n    No data found`;
+        report += `\n    No data found.`;
         continue;
       }
       for (const costForCurrency of monthlyUsage.totalCost) {
         report += `\n      - ${costForCurrency.currency}: ${costForCurrency.value}`;
       }
+
+      // user usage
+      report += `\n\nUser Usage Report`;
+      for (const userUsage of monthlyUsage.costByUser) {
+        const user = await ctx.runQuery(internal.user._getUser, {
+          userId: userUsage.userId,
+        });
+        let userName = 'unknown';
+        if (user.type === 'telegram') {
+          let tokens = [user.telegram.firstName, user.telegram.lastName];
+          if (tokens.length > 0) {
+            userName = tokens.join(' ');
+          } else {
+            userName = 'No access to telegram user name.';
+          }
+        }
+        report += `\n  User: ${userName} (${userUsage.userId})`;
+
+        for (const costForCurrency of userUsage.costs) {
+          report += `\n    - ${costForCurrency.currency}: ${costForCurrency.value.toFixed(2)}`;
+        }
+      }
     }
-    return report.trim();
+    return report;
   },
 });
 
@@ -67,17 +90,46 @@ export const _getMonthlyUsage = internalQuery({
         const totalCostEstimated = m.totalCostEstimated;
         if (totalCostEstimated) {
           for (const { currency, value } of totalCostEstimated) {
+            // aggregate by currency
             state.totalCostMap[currency] = {
               value: state.totalCostMap[currency]?.value || 0,
               currency,
             };
             state.totalCostMap[currency].value += value;
+
+            // aggregate by user
+            const userId = m.userId;
+            if (!state.costByUserMap[userId]) {
+              //init tracking for user
+              state.costByUserMap[userId] = {
+                userId,
+                costs: [],
+              };
+            }
+            const userCosts = state.costByUserMap[userId].costs;
+            let costForCurrency = userCosts.find(
+              (c) => c.currency === currency
+            );
+            if (!costForCurrency) {
+              //init tracking for currency
+              costForCurrency = {
+                currency,
+                value: 0,
+              };
+              userCosts.push(costForCurrency);
+            }
+            // get the cost for the currency and increment
+            costForCurrency.value += value;
           }
         }
         return state;
       },
       {
         totalCostMap: {} as Record<string, { value: number; currency: string }>,
+        costByUserMap: {} as Record<
+          string, //user id and currency
+          { userId: Id<'user'>; costs: { value: number; currency: string }[] }
+        >,
       }
     );
 
@@ -88,6 +140,7 @@ export const _getMonthlyUsage = internalQuery({
         month: args.month,
       },
       totalCost: totalCostList,
+      costByUser: Object.values(usageMap.costByUserMap),
     };
     return usage;
   },

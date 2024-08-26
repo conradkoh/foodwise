@@ -1,3 +1,4 @@
+import { zid } from '@/utils/convex';
 import { z } from 'zod';
 
 //========================================
@@ -15,6 +16,17 @@ export const systemUsage_zodSchema = z.object({
     z.object({
       currency: z.string(),
       value: z.number(),
+    })
+  ),
+  costByUser: z.array(
+    z.object({
+      userId: zid('user'),
+      costs: z.array(
+        z.object({
+          currency: z.string(),
+          value: z.number(),
+        })
+      ),
     })
   ),
 });
