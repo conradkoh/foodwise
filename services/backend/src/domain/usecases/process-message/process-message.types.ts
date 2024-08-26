@@ -22,29 +22,17 @@ export type ProcessMessageParams = {
 // =========================================
 // Process Message Result
 // =========================================
-export type ProcessMessageResult =
-  | {
-      isError: false;
-      message: string;
-      additionalMessages: string[];
-      intermediates: {
-        stage1Output: Stage1Output;
-        stage2Output?: Stage2Output;
-      };
-      actionsTaken: string[];
-      usageMetrics: MessageUsageMetric[];
-    }
-  | {
-      isError: true;
-      message: string;
-      additionalMessages: string[];
-      intermediates: {
-        stage1Output?: Stage1Output;
-        stage2Output?: Stage2Output;
-      };
-      actionsTaken: string[];
-      usageMetrics: MessageUsageMetric[];
-    };
+export type ProcessMessageResult = {
+  isError: boolean;
+  message: string;
+  additionalMessages: string[];
+  intermediates: {
+    stage1Output?: Stage1Output;
+    stage2Output?: Stage2Output;
+  };
+  actionsTaken: string[];
+  usageMetrics: MessageUsageMetric[];
+};
 
 // =========================================
 // Process Message Dependencies
