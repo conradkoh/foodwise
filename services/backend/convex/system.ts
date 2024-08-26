@@ -55,10 +55,10 @@ export const usageReport = internalAction({
           }
         }
         report += `\n  User: ${userName} (${userUsage.userId})`;
-
-        for (const costForCurrency of userUsage.costs) {
-          report += `\n    - ${costForCurrency.currency}: ${costForCurrency.value.toFixed(2)}`;
-        }
+        const costStr = userUsage.costs
+          .map((c) => `${c.currency}: ${c.value.toFixed(2)}`)
+          .join(', ');
+        report += `\n     - ${userUsage.context.messageCount} messages processed. Total cost: ${costStr}`;
       }
     }
     return report;
@@ -86,9 +86,25 @@ export const _getMonthlyUsage = internalQuery({
       )
       .collect();
     const usageMap = messages.reduce(
-      (state, m) => {
-        const totalCostEstimated = m.totalCostEstimated;
+      (state, { userId, totalCostEstimated }) => {
+        // increment the message count
+        if (!state.costByUserMap[userId]) {
+          //init user context
+          state.costByUserMap[userId] = {
+            userId,
+            costs: [],
+            context: {
+              messageCount: 0,
+            },
+          };
+        }
+        const userStats = state.costByUserMap[userId];
+
+        // increment the message count
+        userStats.context.messageCount++;
+
         if (totalCostEstimated) {
+          // aggregate costs
           for (const { currency, value } of totalCostEstimated) {
             // aggregate by currency
             state.totalCostMap[currency] = {
@@ -98,28 +114,19 @@ export const _getMonthlyUsage = internalQuery({
             state.totalCostMap[currency].value += value;
 
             // aggregate by user
-            const userId = m.userId;
-            if (!state.costByUserMap[userId]) {
-              //init tracking for user
-              state.costByUserMap[userId] = {
-                userId,
-                costs: [],
-              };
-            }
-            const userCosts = state.costByUserMap[userId].costs;
-            let costForCurrency = userCosts.find(
-              (c) => c.currency === currency
+            let userCurrencyStats = userStats.costs.find(
+              (c) => c.currency === currency //find the currency
             );
-            if (!costForCurrency) {
+            if (!userCurrencyStats) {
               //init tracking for currency
-              costForCurrency = {
+              userCurrencyStats = {
                 currency,
                 value: 0,
               };
-              userCosts.push(costForCurrency);
+              userStats.costs.push(userCurrencyStats);
             }
             // get the cost for the currency and increment
-            costForCurrency.value += value;
+            userCurrencyStats.value += value;
           }
         }
         return state;
@@ -127,8 +134,12 @@ export const _getMonthlyUsage = internalQuery({
       {
         totalCostMap: {} as Record<string, { value: number; currency: string }>,
         costByUserMap: {} as Record<
-          string, //user id and currency
-          { userId: Id<'user'>; costs: { value: number; currency: string }[] }
+          string, //user
+          {
+            userId: Id<'user'>;
+            costs: { value: number; currency: string }[];
+            context: { messageCount: number };
+          }
         >,
       }
     );

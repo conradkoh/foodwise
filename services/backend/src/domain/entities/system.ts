@@ -27,6 +27,9 @@ export const systemUsage_zodSchema = z.object({
           value: z.number(),
         })
       ),
+      context: z.object({
+        messageCount: z.number(),
+      }),
     })
   ),
 });
