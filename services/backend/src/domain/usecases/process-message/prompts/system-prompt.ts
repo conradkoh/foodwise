@@ -68,6 +68,7 @@ Summary:
     Average Daily Calorie Deficit: 250 kcal
 
 ## Output Format for STAGE_2 
-Plain text only. Do not use markdown.
+Plain text only. Do not use markdown or any formatting tokens. Prefer whitespace formatting, and use - for bullet points. For emphasis, use caps.
+Do not bold, italicize, or underline.
 
 `;

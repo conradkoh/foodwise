@@ -32,6 +32,7 @@ import type {
 import { SYSTEM_PROMPT } from "@/domain/usecases/process-message/prompts/system-prompt";
 import { DateTime } from "luxon";
 import { ProcessMessageResultBuilder } from "./ProcessMessageResultBuilder";
+import { openAIFormat } from "@/utils/openai/format";
 
 export const processMessage: ProcessMessageFunc =
 	(deps) =>
@@ -183,10 +184,7 @@ async function handleStage1Actions(
 const processStage2 =
 	(deps: ProcessMessageDeps, resultBuilder: ProcessMessageResultBuilder) =>
 	async (params: ProcessMessageParams) => {
-		const {
-			response: { data: stage2Output },
-			usage: stage2Usage,
-		} = await openAIParse({
+		const { response, usage: stage2Usage } = await openAIFormat({
 			systemPrompt: SYSTEM_PROMPT({
 				currentDateStr: params.currentDateStr,
 				stage: "STAGE_2",
@@ -195,11 +193,11 @@ const processStage2 =
 				userInput: params.inputText,
 				actionsTaken: resultBuilder.build().actionsTaken,
 			}),
-			schema: {
-				name: "user_health_information_stage_2",
-				zod: stage2Output_zodSchema,
-			},
+			type: "fast",
+			temperature: 20,
 		});
+
+		const stage2Output = { response: response.data };
 
 		resultBuilder.setStage2Output(stage2Output);
 		resultBuilder.addUsageMetric(

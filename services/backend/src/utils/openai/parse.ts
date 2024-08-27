@@ -1,3 +1,5 @@
+import { OpenAIModel } from "@/utils/openai/_models";
+import { getUsage } from "@/utils/openai/_usage";
 import OpenAI from "openai";
 import { z } from "zod";
 import zodToJsonSchema from "zod-to-json-schema";
@@ -20,7 +22,7 @@ export const openAIParse = async <T extends z.ZodType>(p: {
 			{ role: "system", content: p.systemPrompt },
 			{ role: "user", content: p.text },
 		],
-		model: "gpt-4o-2024-08-06",
+		model: OpenAIModel.GPT_4o,
 		temperature: 0,
 		response_format: {
 			type: "json_schema",
@@ -46,24 +48,7 @@ export const openAIParse = async <T extends z.ZodType>(p: {
 		throw new Error("OpenAI return a response with an invalid format.");
 	}
 
-	// detect api utilization and estimate cost
-	const costEstimates = {
-		input: (chatCompletion.usage?.prompt_tokens || 0) * (2.5 / 1000000),
-		output: (chatCompletion.usage?.completion_tokens || 0) * (10 / 1000000),
-	};
-	const usage = {
-		tokens: {
-			prompt: chatCompletion.usage?.prompt_tokens || 0,
-			completion: chatCompletion.usage?.completion_tokens || 0,
-			total: chatCompletion.usage?.total_tokens || 0,
-		},
-		cost: {
-			input: costEstimates.input,
-			output: costEstimates.output,
-			total: costEstimates.input + costEstimates.output,
-			currency: "USD" as const,
-		},
-	};
+	const usage = getUsage(OpenAIModel.GPT_4o, chatCompletion);
 	return {
 		response: res,
 		usage,
