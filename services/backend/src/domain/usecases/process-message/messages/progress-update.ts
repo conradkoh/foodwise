@@ -3,7 +3,7 @@ export const PROGRESS_UPDATE_TEXT = (p: ProgressUpdateParams) => {
 	const deficitSymbol = deficit > 0 ? "👍🏼" : "‼️";
 	return `
 <b>Your progress for ${p.date}</b>
- - 🍔 In: ${p.caloriesIn} kcal, 🔥 Out: ${p.caloriesOut} kcal, ${deficitSymbol} Deficit: ${deficit} kcal
+ - 🍔 In: ${Math.round(p.caloriesIn)} kcal, 🔥 Out: ${Math.round(p.caloriesOut)} kcal, ${deficitSymbol} Deficit: ${Math.round(deficit)} kcal
 `.trim();
 };
 
