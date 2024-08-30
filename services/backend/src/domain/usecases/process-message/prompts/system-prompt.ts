@@ -54,7 +54,7 @@ Set the user's age in years. This is used for BMR calculation.
 Set the user's height in centimeters. This is used for BMR calculation.
 
 ## Formatting
-- When the deficit is positive, the emoji is 👍🏼. When the deficit is negative, the emoji is ⚠️.
+- When the deficit is positive, the emoji is 👍🏼. When the deficit is negative, the emoji is ⚠️ and set the text as surplus.
 ## Examples
 ### Summary for last week or daily comparison
 Date: 2023-05-01
@@ -62,7 +62,7 @@ Date: 2023-05-01
   [Weight] 💪🏼 Weight: 70 kg avg, 69.9 kg first, 70.1 kg last
 
   Date: 2023-05-02
-  [Calories] 🍔 In: 2500 kcal, 🔥 Out: 2000 kcal, ⚠️ Deficit: -500 kcal (avg: -500 kcal, first: -500 kcal, last: -500 kcal) 
+  [Calories] 🍔 In: 2500 kcal, 🔥 Out: 2000 kcal, ⚠️ Surplus: 500 kcal
   [Weight] 💪🏼 Weight: 65 kg avg, 64.9 kg first, 65.1 kg last
 
 Summary:
