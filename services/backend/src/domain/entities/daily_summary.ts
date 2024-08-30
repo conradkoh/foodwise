@@ -30,5 +30,17 @@ export const dailySummary_zodSchema = z.object({
 			units: z.literal("kg"),
 		}),
 	),
+	firstWeight: z.optional(
+		z.object({
+			value: z.number(),
+			units: z.literal("kg"),
+		}),
+	),
+	lastWeight: z.optional(
+		z.object({
+			value: z.number(),
+			units: z.literal("kg"),
+		}),
+	),
 	hasData: z.boolean(),
 });

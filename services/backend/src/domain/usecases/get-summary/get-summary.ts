@@ -4,7 +4,6 @@ import {
 } from "@/domain/entities/daily_summary";
 import { zid } from "convex-helpers/server/zod";
 import type { Id } from "convex/_generated/dataModel";
-import { DateTime } from "luxon";
 import { z } from "zod";
 
 // zod input
@@ -135,13 +134,13 @@ function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
 	}
 
 	const overview: GetLastNDaysSummaryResult["overview"] = {};
-	if (lastDay.weight && firstDay.weight) {
-		if (lastDay.weight.units !== firstDay.weight.units) {
+	if (firstDay.firstWeight && lastDay.lastWeight) {
+		if (lastDay.lastWeight.units !== firstDay.firstWeight.units) {
 			throw new Error("Weight units do not match");
 		}
-		const weightUnit = lastDay.weight.units;
+		const weightUnit = lastDay.lastWeight.units;
 		const weightLost = {
-			value: firstDay.weight.value - lastDay.weight.value,
+			value: firstDay.firstWeight.value - lastDay.lastWeight.value,
 			units: weightUnit,
 		};
 		overview.weightLost = {

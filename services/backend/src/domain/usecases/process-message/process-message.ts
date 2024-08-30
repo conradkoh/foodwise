@@ -16,7 +16,6 @@ import {
 	type WeightAction,
 	stage1Output_zodSchema,
 } from "@/domain/usecases/process-message/schemas/stage_1";
-import { stage2Output_zodSchema } from "@/domain/usecases/process-message/schemas/stage_2";
 import { openAIParse } from "@/utils/openai";
 
 import { isUserReady } from "@/domain/entities/user";
@@ -538,6 +537,16 @@ function formatSummary(params: {
 				`  Weight: ${dailySummary.weight.value} ${dailySummary.weight.units}`,
 			);
 		}
+		if (dailySummary.firstWeight) {
+			resultLines.push(
+				`  First Weight: ${dailySummary.firstWeight.value} ${dailySummary.firstWeight.units}`,
+			);
+		}
+		if (dailySummary.lastWeight) {
+			resultLines.push(
+				`  Last Weight: ${dailySummary.lastWeight.value} ${dailySummary.lastWeight.units}`,
+			);
+		}
 	}
 
 	// Summary across all days
@@ -546,6 +555,8 @@ function formatSummary(params: {
 		resultLines.push(
 			`  Weight Lost: ${params.summary.overview.weightLost.value} ${params.summary.overview.weightLost.units}`,
 		);
+	} else {
+		resultLines.push("  Weight Lost: No data recorded");
 	}
 	if (params.summary.overview?.averageCalorieDeficit) {
 		resultLines.push(

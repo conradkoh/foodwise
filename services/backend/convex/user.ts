@@ -270,11 +270,6 @@ function computeDailySummary(params: {
 
 		const baseBurn = params.baseBurn;
 		const caloriesOut = baseBurn.value + activityBurn;
-		console.log({
-			caloriesOut,
-			baseBurn,
-			activityBurn,
-		});
 
 		const deficit = caloriesOut - caloriesIn;
 
@@ -290,6 +285,8 @@ function computeDailySummary(params: {
 			},
 			{ total: 0, count: 0 },
 		);
+		const firstWeight = dayWeights[0]?.weight;
+		const lastWeight = dayWeights[dayWeights.length - 1]?.weight;
 
 		const weight =
 			avgWeight.count > 0 ? avgWeight.total / avgWeight.count : undefined;
@@ -325,6 +322,19 @@ function computeDailySummary(params: {
 				units: "kg",
 			};
 		}
+		if (firstWeight) {
+			summary.firstWeight = {
+				value: firstWeight.value,
+				units: firstWeight.units,
+			};
+		}
+		if (lastWeight) {
+			summary.lastWeight = {
+				value: lastWeight.value,
+				units: lastWeight.units,
+			};
+		}
+
 		summaries.push(summary);
 	}
 	return summaries;
