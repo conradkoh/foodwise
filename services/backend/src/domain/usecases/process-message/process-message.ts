@@ -223,6 +223,7 @@ async function handleRecordWeight(
 	params: ProcessMessageParams,
 	action: WeightAction,
 	resultBuilder: ProcessMessageResultBuilder,
+	endOfCurrentDayTs: number,
 ) {
 	await deps.recordUserWeight({
 		userId: params.userId,
@@ -232,6 +233,18 @@ async function handleRecordWeight(
 	resultBuilder.addActionTaken(
 		`Recorded weight: ${action.weight.value} ${action.weight.units}`,
 	);
+
+	// Fetch and display weight summary for the last 3 days
+	const summary = await deps.getLastNDaysSummary({
+		numDays: 3,
+		userId: params.userId,
+		endOfCurrentDayTs,
+		userTz: params.userTz,
+	});
+	const weightSummary = formatWeightSummary(summary);
+	if (weightSummary) {
+		resultBuilder.addAdditionalMessage(weightSummary);
+	}
 }
 
 async function handleRecordMealsAndCalories(
@@ -564,4 +577,34 @@ function formatSummary(params: {
 		);
 	}
 	return resultLines.join("\n");
+}
+
+function formatWeightSummary(
+	summary: GetLastNDaysSummaryResult,
+): string | undefined {
+	const weightLogs = summary.dailySummaries.map((d) => {
+		const dayOfWeekStr = DateTime.fromISO(d.date).toFormat("ccc");
+		if (!d.lastWeight?.value) {
+			return {
+				date: d.date,
+				lastWeight: d.lastWeight,
+				description: `[${dayOfWeekStr}] Weight: No data recorded`,
+			};
+		}
+		return {
+			date: d.date,
+			lastWeight: d.weight,
+			description: `[${dayOfWeekStr}] Weight: ${d.lastWeight.value} ${d.lastWeight.units}`,
+		};
+	});
+
+	if (weightLogs.length === 0) {
+		return undefined;
+	}
+
+	const formattedLogs = weightLogs
+		.map((log) => `   - ${log.description}`)
+		.join("\n");
+
+	return `EOD Weight summary for the last 3 days:\n${formattedLogs}`;
 }
