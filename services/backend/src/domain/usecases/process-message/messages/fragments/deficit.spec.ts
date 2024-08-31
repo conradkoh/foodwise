@@ -12,7 +12,7 @@ describe("Deficit Surplus", () => {
 		const result = formatDeficitSurplus({
 			deficit: { value: -1000, units: "kcal" },
 		});
-		expect(result).toBe("Surplus: ⚠️ -1000 kcal");
+		expect(result).toBe("Surplus: ⚠️ 1000 kcal");
 	});
 	test("No deficit", () => {
 		const result = formatDeficitSurplus({

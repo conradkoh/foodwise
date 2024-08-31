@@ -21,8 +21,9 @@ export const formatDeficitSurplus = (params: DeficitSurplusParams) => {
 	}
 	let detail = "No data recorded";
 	if (deficit) {
+		const positiveVal = Math.abs(deficit.value);
 		// prettify value to remove redundant trailing zero decimals
-		let prettyVal = deficit.value.toFixed(2);
+		let prettyVal = positiveVal.toFixed(2);
 		if (prettyVal.endsWith(".00")) {
 			prettyVal = prettyVal.slice(0, -3);
 		}

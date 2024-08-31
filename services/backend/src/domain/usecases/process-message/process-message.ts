@@ -225,7 +225,6 @@ async function handleRecordWeight(
 	resultBuilder.addActionTaken(
 		`Recorded weight: ${action.weight.value} ${action.weight.units}`,
 	);
-	resultBuilder.addAdditionalMessage("Date: " + action.forDate);
 
 	// Fetch and display weight summary for the last 3 days
 	const summary = await deps.getLastNDaysSummary({

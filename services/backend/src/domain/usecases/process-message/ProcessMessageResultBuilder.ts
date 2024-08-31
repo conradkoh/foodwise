@@ -29,6 +29,10 @@ export class ProcessMessageResultBuilder {
 		this.result.additionalMessages.push(message);
 		return this;
 	}
+	debug(message: string): ProcessMessageResultBuilder {
+		this.result.additionalMessages.push(`DEBUG: ${message}`);
+		return this;
+	}
 
 	setMessage(message: string): ProcessMessageResultBuilder {
 		this.result.message = message;
