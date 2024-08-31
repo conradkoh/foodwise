@@ -37,9 +37,12 @@ http.route({
 				});
 
 				const userTz = user?.timezone || "Asia/Singapore";
+				const format = "dd MMM yyyy HH:mm" as const;
 				const currentDateStr = DateTime.now()
 					.setZone(userTz)
-					.toFormat("dd MMM yyyy HH:mm");
+					.toFormat("dd MMM yyyy HH:mm") as string & {
+					__format: typeof format;
+				};
 
 				// create user if not found
 				if (!user) {

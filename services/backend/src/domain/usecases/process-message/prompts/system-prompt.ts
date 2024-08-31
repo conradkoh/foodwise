@@ -2,7 +2,7 @@ import { INTENTS } from "@/domain/usecases/process-message/intent";
 import { formatDeficitSurplus } from "@/domain/usecases/process-message/messages/fragments/deficit";
 
 export const SYSTEM_PROMPT = (p: {
-	currentDateStr: string;
+	currentDateStr: string & { __format: "dd MMM yyyy HH:mm" };
 	stage: "STAGE_1" | "STAGE_2";
 }) => `
 # HealthBot Agent Overview
