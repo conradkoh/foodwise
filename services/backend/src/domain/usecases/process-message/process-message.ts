@@ -32,6 +32,7 @@ import { SYSTEM_PROMPT } from "@/domain/usecases/process-message/prompts/system-
 import { DateTime } from "luxon";
 import { ProcessMessageResultBuilder } from "./ProcessMessageResultBuilder";
 import { openAIFormat } from "@/utils/openai/format";
+import { formatDeficitSurplus } from "@/domain/usecases/process-message/messages/fragments/deficit";
 
 export const processMessage: ProcessMessageFunc =
 	(deps) =>
@@ -541,9 +542,7 @@ function formatSummary(params: {
 			);
 		}
 		if (dailySummary.deficit) {
-			resultLines.push(
-				`  Deficit: ${dailySummary.deficit.value} ${dailySummary.deficit.units}`,
-			);
+			resultLines.push(formatDeficitSurplus({ deficit: dailySummary.deficit }));
 		}
 		if (dailySummary.weight) {
 			resultLines.push(

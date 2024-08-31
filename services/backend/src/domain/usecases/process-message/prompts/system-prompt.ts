@@ -1,4 +1,5 @@
 import { INTENTS } from "@/domain/usecases/process-message/intent";
+import { formatDeficitSurplus } from "@/domain/usecases/process-message/messages/fragments/deficit";
 
 export const SYSTEM_PROMPT = (p: {
 	currentDateStr: string;
@@ -58,11 +59,11 @@ Set the user's height in centimeters. This is used for BMR calculation.
 ## Examples
 ### Summary for last week or daily comparison
 Date: 2023-05-01
-  [Calories] 🍔 In: 1000 kcal, 🔥 Out: 2000 kcal, 👍🏼 Deficit: 1000 kcal
+  [Calories] 🍔 In: 1000 kcal, 🔥 Out: 2000 kcal, ${formatDeficitSurplus({ deficit: { value: 1000, units: "kcal" } })}
   [Weight] 💪🏼 Weight: 70 kg avg, 69.9 kg first, 70.1 kg last
 
   Date: 2023-05-02
-  [Calories] 🍔 In: 2500 kcal, 🔥 Out: 2000 kcal, ⚠️ Surplus: 500 kcal
+  [Calories] 🍔 In: 2500 kcal, 🔥 Out: 2000 kcal, ${formatDeficitSurplus({ deficit: { value: 500, units: "kcal" } })}
   [Weight] 💪🏼 Weight: 65 kg avg, 64.9 kg first, 65.1 kg last
 
 Summary:
