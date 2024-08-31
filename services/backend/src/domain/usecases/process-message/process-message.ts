@@ -33,16 +33,16 @@ import { DateTime } from "luxon";
 import { ProcessMessageResultBuilder } from "./ProcessMessageResultBuilder";
 import { openAIFormat } from "@/utils/openai/format";
 import { formatDeficitSurplus } from "@/domain/usecases/process-message/messages/fragments/deficit";
+import type { BRAND } from "zod";
+import {
+	endOfCurrentDay,
+	endOfDay,
+} from "@/domain/usecases/process-message/process-message.utils";
 
 export const processMessage: ProcessMessageFunc =
 	(deps) =>
 	async (params): Promise<ProcessMessageResult> => {
 		const resultBuilder = new ProcessMessageResultBuilder();
-		const endOfCurrentDayTs = DateTime.now()
-			.setZone(params.userTz)
-			.endOf("day")
-			.toMillis();
-
 		try {
 			// Handle /start command
 			if (params.inputText.trim().toLowerCase() === "/start") {
@@ -50,13 +50,11 @@ export const processMessage: ProcessMessageFunc =
 			}
 
 			const stage1Result = await processStage1(deps, resultBuilder)(params);
-
 			await handleStage1Actions(
 				deps,
 				params,
-				stage1Result.stage1Output,
+				stage1Result.stage1Output.actions,
 				resultBuilder,
-				endOfCurrentDayTs,
 			);
 
 			const stage2Result = await processStage2(deps, resultBuilder)(params);
@@ -130,9 +128,8 @@ const processStage1 =
 async function handleStage1Actions(
 	deps: ProcessMessageDeps,
 	params: ProcessMessageParams,
-	stage1Output: Stage1Output,
+	actions: Stage1Output["actions"],
 	resultBuilder: ProcessMessageResultBuilder,
-	endOfCurrentDayTs: number,
 ) {
 	const actionHandlers = {
 		[INTENTS.RECORD_WEIGHT]: handleRecordWeight,
@@ -150,17 +147,11 @@ async function handleStage1Actions(
 	} as const;
 
 	await Promise.all(
-		stage1Output.actions.map(async (action) => {
+		actions.map(async (action) => {
 			const intent = action.intent;
 			const handler = actionHandlers[intent];
 			if (handler) {
-				await handler(
-					deps,
-					params,
-					action as any,
-					resultBuilder,
-					endOfCurrentDayTs,
-				);
+				await handler(deps, params, action as any, resultBuilder);
 			}
 		}),
 	);
@@ -224,22 +215,23 @@ async function handleRecordWeight(
 	params: ProcessMessageParams,
 	action: WeightAction,
 	resultBuilder: ProcessMessageResultBuilder,
-	endOfCurrentDayTs: number,
 ) {
+	const timestamp = localDateToTimestamp(action.forDate, params.userTz);
 	await deps.recordUserWeight({
 		userId: params.userId,
 		weight: action.weight,
-		timestamp: DateTime.now().toMillis(),
+		timestamp,
 	});
 	resultBuilder.addActionTaken(
 		`Recorded weight: ${action.weight.value} ${action.weight.units}`,
 	);
+	resultBuilder.addAdditionalMessage("Date: " + action.forDate);
 
 	// Fetch and display weight summary for the last 3 days
 	const summary = await deps.getLastNDaysSummary({
 		numDays: 3,
 		userId: params.userId,
-		endOfCurrentDayTs,
+		endOfLastDayTs: endOfDay(timestamp, params.userTz),
 		userTz: params.userTz,
 	});
 	const weightSummary = formatWeightSummary(summary);
@@ -253,7 +245,6 @@ async function handleRecordMealsAndCalories(
 	params: ProcessMessageParams,
 	action: MealAction,
 	resultBuilder: ProcessMessageResultBuilder,
-	endOfCurrentDayTs: number,
 ) {
 	const totalCalories = action.items.reduce(
 		(state: { kcal: number }, item) => {
@@ -264,9 +255,8 @@ async function handleRecordMealsAndCalories(
 		},
 		{ kcal: 0 },
 	);
-	const { intent: _, ...args } = action;
+	const timestamp = localDateToTimestamp(action.forDate, params.userTz);
 	await deps.recordUserMealAndCalories({
-		...args,
 		totalCalories: {
 			value: Math.round(totalCalories.kcal),
 			units: "kcal",
@@ -283,14 +273,18 @@ async function handleRecordMealsAndCalories(
 			},
 		})),
 		userId: params.userId,
-		timestamp: DateTime.now().toMillis(),
+		timestamp,
 	});
 	resultBuilder.addActionTaken(
 		`Recorded meal with calories: (${Math.round(totalCalories.kcal)} kcal)`,
 	);
 
 	// Fetch and display progress update
-	const update = await getProgressUpdate(deps, params, endOfCurrentDayTs);
+	const update = await getProgressUpdate(
+		deps,
+		params,
+		endOfDay(timestamp, params.userTz),
+	);
 	if (update) {
 		resultBuilder.addAdditionalMessage(update);
 	}
@@ -301,13 +295,13 @@ async function handleRecordActivitiesAndBurn(
 	params: ProcessMessageParams,
 	action: ActivityAction,
 	resultBuilder: ProcessMessageResultBuilder,
-	endOfCurrentDayTs: number,
 ) {
 	const averageCaloriesBurned =
 		(action.caloriesBurned.min + action.caloriesBurned.max) / 2;
-	const { intent: _, ...args } = action;
+
+	const timestamp = localDateToTimestamp(action.forDate, params.userTz);
 	await deps.recordActivityAndBurn({
-		...args,
+		activity: action.activity,
 		caloriesBurned: {
 			value: Math.round(averageCaloriesBurned),
 			min: action.caloriesBurned.min,
@@ -315,14 +309,18 @@ async function handleRecordActivitiesAndBurn(
 			units: "kcal",
 		},
 		userId: params.userId,
-		timestamp: DateTime.now().toMillis(),
+		timestamp,
 	});
 	resultBuilder.addActionTaken(
 		`Recorded activity: ${action.activity} (${Math.round(averageCaloriesBurned)} ${action.caloriesBurned.units} burned)`,
 	);
 
 	// Fetch and display progress update
-	const update = await getProgressUpdate(deps, params, endOfCurrentDayTs);
+	const update = await getProgressUpdate(
+		deps,
+		params,
+		endOfDay(timestamp, params.userTz),
+	);
 	if (update) {
 		resultBuilder.addAdditionalMessage(update);
 	}
@@ -369,9 +367,8 @@ async function handleSetTimezone(
 	action: SetTimezoneAction,
 	resultBuilder: ProcessMessageResultBuilder,
 ) {
-	const { intent: _, ...args } = action;
 	await deps.setUserTimezone({
-		...args,
+		timezone: action.timezone,
 		userId: params.userId,
 	});
 	resultBuilder.addActionTaken(`Set timezone: ${action.timezone}`);
@@ -382,12 +379,11 @@ async function handleGetWeeklySummary(
 	params: ProcessMessageParams,
 	action: WeeklySummaryAction,
 	resultBuilder: ProcessMessageResultBuilder,
-	endOfCurrentDayTs: number,
 ) {
 	const summary = await deps.getLastNDaysSummary({
 		numDays: 7,
 		userId: params.userId,
-		endOfCurrentDayTs,
+		endOfLastDayTs: endOfCurrentDay(params.userTz),
 		userTz: params.userTz,
 	});
 	const summaryText = formatSummary({
@@ -403,12 +399,11 @@ async function handleGetDailySummary(
 	params: ProcessMessageParams,
 	action: DailySummaryAction,
 	resultBuilder: ProcessMessageResultBuilder,
-	endOfCurrentDayTs: number,
 ) {
 	const last2DaySummary = await deps.getLastNDaysSummary({
 		numDays: 2,
 		userId: params.userId,
-		endOfCurrentDayTs,
+		endOfLastDayTs: endOfCurrentDay(params.userTz),
 		userTz: params.userTz,
 	});
 	const summaryText = formatSummary({
@@ -494,15 +489,22 @@ function formatOpenAIUsage(
 	};
 }
 
+/**
+ * Gets the progress update for the given date
+ * @param deps
+ * @param params
+ * @param forDateTs
+ * @returns
+ */
 async function getProgressUpdate(
 	deps: ProcessMessageDeps,
 	params: ProcessMessageParams,
-	endOfCurrentDayTs: number,
+	forDateTs: number,
 ): Promise<string | undefined> {
 	const dailySummary = await deps.getLastNDaysSummary({
 		numDays: 1,
 		userId: params.userId,
-		endOfCurrentDayTs,
+		endOfLastDayTs: forDateTs,
 		userTz: params.userTz,
 	});
 
@@ -510,6 +512,7 @@ async function getProgressUpdate(
 	if (summary) {
 		return PROGRESS_UPDATE_TEXT({
 			date: summary.date,
+			dayOfWeek: summary.dayOfWeek,
 			caloriesIn: summary.caloriesIn?.value || 0,
 			caloriesOut: summary.caloriesOut?.value || 0,
 		});
@@ -606,4 +609,14 @@ function formatWeightSummary(
 		.join("\n");
 
 	return `EOD Weight summary for the last 3 days:\n${formattedLogs}`;
+}
+
+function localDateToTimestamp(
+	date: string & BRAND<"dateFormat=yyyy-MM-dd HH:mm:ss">,
+	tz: string,
+) {
+	const dateTime = DateTime.fromFormat(date, "yyyy-MM-dd HH:mm:ss", {
+		zone: tz,
+	});
+	return dateTime.toMillis();
 }

@@ -6,6 +6,7 @@ import { httpRouter } from "convex/server";
 import { DateTime } from "luxon";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
+import type { BRAND } from "zod";
 
 const http = httpRouter();
 
@@ -40,9 +41,8 @@ http.route({
 				const format = "dd MMM yyyy HH:mm" as const;
 				const currentDateStr = DateTime.now()
 					.setZone(userTz)
-					.toFormat("dd MMM yyyy HH:mm") as string & {
-					__format: typeof format;
-				};
+					.toFormat("dd MMM yyyy HH:mm") as string &
+					BRAND<`dateFormat=${typeof format}`>;
 
 				// create user if not found
 				if (!user) {

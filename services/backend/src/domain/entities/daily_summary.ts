@@ -5,6 +5,7 @@ export type DailySummary = z.infer<typeof dailySummary_zodSchema>;
 //zod
 export const dailySummary_zodSchema = z.object({
 	date: z.string(), //date in format 'YYYY-MM-DD'
+	dayOfWeek: z.string().brand("format=ccc"),
 	dateTs: z.number(),
 	caloriesIn: z.optional(
 		z.object({

@@ -1,8 +1,9 @@
 import { INTENTS } from "@/domain/usecases/process-message/intent";
 import { formatDeficitSurplus } from "@/domain/usecases/process-message/messages/fragments/deficit";
+import type { BRAND } from "zod";
 
 export const SYSTEM_PROMPT = (p: {
-	currentDateStr: string & { __format: "dd MMM yyyy HH:mm" };
+	currentDateStr: string & BRAND<"dateFormat=dd MMM yyyy HH:mm">;
 	stage: "STAGE_1" | "STAGE_2";
 }) => `
 # HealthBot Agent Overview
@@ -12,6 +13,8 @@ The HealthBot system processes a user's message and determines the steps to take
 
 CURRENT DATE: ${p.currentDateStr}
 CURRENT STAGE: ${p.stage}
+
+The system should use the following format when specifying dates as string values: YYYY-MM-DD HH:mm:ss. e.g. 2024-01-01 00:00:00
 
 ## Allowed User intentions
 Each user message can have multiple intentions. The following are the allowed intentions:

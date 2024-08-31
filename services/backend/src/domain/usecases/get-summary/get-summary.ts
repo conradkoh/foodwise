@@ -13,7 +13,7 @@ export type GetLastNDaysSummaryParams = z.infer<
 const getLastNDaysSummary_params_zodSchema = z.object({
 	userTz: z.string(),
 	userId: zid("user"),
-	endOfCurrentDayTs: z.number(),
+	endOfLastDayTs: z.number(),
 	numDays: z.number(),
 });
 
@@ -68,15 +68,15 @@ export const getLastNDaysSummary =
 	async (
 		params: GetLastNDaysSummaryParams,
 	): Promise<GetLastNDaysSummaryResult> => {
-		const { userId, endOfCurrentDayTs, userTz, numDays } = params;
+		const { userId, endOfLastDayTs, userTz, numDays } = params;
 		const oneDayInMs = 24 * 60 * 60 * 1000;
-		const nDaysAgoStartTimestamp = endOfCurrentDayTs - numDays * oneDayInMs + 1;
+		const nDaysAgoStartTimestamp = endOfLastDayTs - numDays * oneDayInMs + 1;
 
 		const dailySummaries = await deps.getSummariesRollupDaily({
 			userTz,
 			userId,
 			fromTimestamp: nDaysAgoStartTimestamp,
-			toTimestamp: endOfCurrentDayTs,
+			toTimestamp: endOfLastDayTs,
 		});
 
 		if (dailySummaries.length === 0) {

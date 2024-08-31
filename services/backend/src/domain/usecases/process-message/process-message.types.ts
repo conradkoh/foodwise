@@ -4,6 +4,7 @@ import type { Stage2Output } from "@/domain/usecases/process-message/schemas/sta
 import type { BoundMutation, BoundQuery } from "@/utils/convex";
 import type { internal } from "convex/_generated/api";
 import type { Id } from "convex/_generated/dataModel";
+import type { BRAND } from "zod";
 
 export type ProcessMessageFunc = (
 	deps: ProcessMessageDeps,
@@ -17,7 +18,7 @@ export type ProcessMessageParams = {
 	userId: Id<"user">;
 	inputText: string;
 	userTz: string;
-	currentDateStr: string & { __format: "dd MMM yyyy HH:mm" };
+	currentDateStr: string & BRAND<"dateFormat=dd MMM yyyy HH:mm">;
 };
 // =========================================
 // Process Message Result

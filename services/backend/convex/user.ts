@@ -22,6 +22,7 @@ import {
 	internalMutation,
 	internalQuery,
 } from "./_generated/server";
+import type { BRAND } from "zod";
 
 export const _getTelegramUser = internalQuery({
 	args: {
@@ -129,12 +130,12 @@ export const _setUserHeight = internalMutation({
 export const _getLastNDaysSummary = internalQuery({
 	args: {
 		userId: v.id("user"),
-		endOfCurrentDayTs: v.number(),
+		endOfLastDayTs: v.number(), //the end of the last day. iterate backwards from this timestamp
 		numDays: v.number(),
 		userTz: v.string(),
 	},
 	handler: async (ctx, args): Promise<GetLastNDaysSummaryResult> => {
-		const { userId, endOfCurrentDayTs, userTz, numDays } = args;
+		const { userId, endOfLastDayTs, userTz, numDays } = args;
 		const summary = await getLastNDaysSummary({
 			getSummariesRollupDaily: (params) => {
 				return getSummariesRollupDaily(ctx, params);
@@ -143,7 +144,7 @@ export const _getLastNDaysSummary = internalQuery({
 			userTz,
 			userId,
 			numDays,
-			endOfCurrentDayTs,
+			endOfLastDayTs,
 		});
 		return summary;
 	},
@@ -291,11 +292,11 @@ function computeDailySummary(params: {
 		const weight =
 			avgWeight.count > 0 ? avgWeight.total / avgWeight.count : undefined;
 
+		const date = DateTime.fromMillis(dayStart).setZone(userTz);
 		const summary: DailySummary = {
 			hasData: hasMealData || hasActivityData || hasWeightData,
-			date: DateTime.fromMillis(dayStart)
-				.setZone(userTz)
-				.toFormat("yyyy-MM-dd"),
+			date: date.toFormat("yyyy-MM-dd"),
+			dayOfWeek: date.toFormat("ccc") as string & BRAND<"format=ccc">,
 			dateTs: dayStart,
 		};
 		if (caloriesIn) {
