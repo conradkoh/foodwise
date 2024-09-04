@@ -134,13 +134,14 @@ function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
 	}
 
 	const overview: GetLastNDaysSummaryResult["overview"] = {};
-	if (firstDay.firstWeight && lastDay.lastWeight) {
-		if (lastDay.lastWeight.units !== firstDay.firstWeight.units) {
+	if (firstDay.firstMorningWeight && lastDay.lastEveningWeight) {
+		if (lastDay.lastEveningWeight.units !== firstDay.firstMorningWeight.units) {
 			throw new Error("Weight units do not match");
 		}
-		const weightUnit = lastDay.lastWeight.units;
+		const weightUnit = lastDay.lastEveningWeight.units;
 		const weightLost = {
-			value: firstDay.firstWeight.value - lastDay.lastWeight.value,
+			value:
+				firstDay.firstMorningWeight.value - lastDay.lastEveningWeight.value,
 			units: weightUnit,
 		};
 		overview.weightLost = {

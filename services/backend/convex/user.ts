@@ -23,6 +23,7 @@ import {
 	internalQuery,
 } from "./_generated/server";
 import type { BRAND } from "zod";
+import { filterByCategory } from "@/domain/entities/datetime";
 
 export const _getTelegramUser = internalQuery({
 	args: {
@@ -286,8 +287,11 @@ function computeDailySummary(params: {
 			},
 			{ total: 0, count: 0 },
 		);
-		const firstWeight = dayWeights[0]?.weight;
-		const lastWeight = dayWeights[dayWeights.length - 1]?.weight;
+		const morningWeights = filterByCategory(dayWeights, "morning", userTz);
+		const eveningWeights = filterByCategory(dayWeights, "evening", userTz);
+
+		const firstWeightMorning = morningWeights[0]?.weight;
+		const lastEveningWeight = eveningWeights[eveningWeights.length - 1]?.weight;
 
 		const weight =
 			avgWeight.count > 0 ? avgWeight.total / avgWeight.count : undefined;
@@ -323,16 +327,16 @@ function computeDailySummary(params: {
 				units: "kg",
 			};
 		}
-		if (firstWeight) {
-			summary.firstWeight = {
-				value: firstWeight.value,
-				units: firstWeight.units,
+		if (firstWeightMorning) {
+			summary.firstMorningWeight = {
+				value: firstWeightMorning.value,
+				units: firstWeightMorning.units,
 			};
 		}
-		if (lastWeight) {
-			summary.lastWeight = {
-				value: lastWeight.value,
-				units: lastWeight.units,
+		if (lastEveningWeight) {
+			summary.lastEveningWeight = {
+				value: lastEveningWeight.value,
+				units: lastEveningWeight.units,
 			};
 		}
 

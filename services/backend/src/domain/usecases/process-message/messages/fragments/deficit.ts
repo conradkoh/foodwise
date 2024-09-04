@@ -19,7 +19,7 @@ export const formatDeficitSurplus = (params: DeficitSurplusParams) => {
 	if (deficit && deficit.value < 0) {
 		deficitSurplusText = "Surplus";
 	}
-	let detail = "No data recorded";
+	let detail = "No data";
 	if (deficit) {
 		const positiveVal = Math.abs(deficit.value);
 		// prettify value to remove redundant trailing zero decimals

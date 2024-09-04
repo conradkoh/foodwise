@@ -18,6 +18,6 @@ describe("Deficit Surplus", () => {
 		const result = formatDeficitSurplus({
 			deficit: undefined,
 		});
-		expect(result).toBe("Deficit: No data recorded");
+		expect(result).toBe("Deficit: No data");
 	});
 });

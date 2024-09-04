@@ -529,7 +529,7 @@ function formatSummary(params: {
 	for (const dailySummary of params.summary.dailySummaries) {
 		resultLines.push(`Date: ${dailySummary.date}`);
 		if (!dailySummary.hasData) {
-			resultLines.push("  No data recorded.");
+			resultLines.push("  No data.");
 			continue;
 		}
 
@@ -551,14 +551,14 @@ function formatSummary(params: {
 				`  Weight: ${dailySummary.weight.value} ${dailySummary.weight.units}`,
 			);
 		}
-		if (dailySummary.firstWeight) {
+		if (dailySummary.firstMorningWeight) {
 			resultLines.push(
-				`  First Weight: ${dailySummary.firstWeight.value} ${dailySummary.firstWeight.units}`,
+				`  Morning Weight: ${dailySummary.firstMorningWeight.value} ${dailySummary.firstMorningWeight.units}`,
 			);
 		}
-		if (dailySummary.lastWeight) {
+		if (dailySummary.lastEveningWeight) {
 			resultLines.push(
-				`  Last Weight: ${dailySummary.lastWeight.value} ${dailySummary.lastWeight.units}`,
+				`  Evening Weight: ${dailySummary.lastEveningWeight.value} ${dailySummary.lastEveningWeight.units}`,
 			);
 		}
 	}
@@ -570,7 +570,7 @@ function formatSummary(params: {
 			`  Weight Lost: ${params.summary.overview.weightLost.value} ${params.summary.overview.weightLost.units}`,
 		);
 	} else {
-		resultLines.push("  Weight Lost: No data recorded");
+		resultLines.push("  Weight Lost: No data");
 	}
 	if (params.summary.overview?.averageCalorieDeficit) {
 		resultLines.push(
@@ -585,17 +585,10 @@ function formatWeightSummary(
 ): string | undefined {
 	const weightLogs = summary.dailySummaries.map((d) => {
 		const dayOfWeekStr = DateTime.fromISO(d.date).toFormat("ccc");
-		if (!d.lastWeight?.value) {
-			return {
-				date: d.date,
-				lastWeight: d.lastWeight,
-				description: `[${dayOfWeekStr}] Weight: No data recorded`,
-			};
-		}
 		return {
 			date: d.date,
 			lastWeight: d.weight,
-			description: `[${dayOfWeekStr}] Weight: ${d.lastWeight.value} ${d.lastWeight.units}`,
+			description: `<code>[${dayOfWeekStr}] ☀️ ${formatWeight(d.firstMorningWeight)} | 🌙 ${formatWeight(d.lastEveningWeight)}</code>`,
 		};
 	});
 
@@ -607,7 +600,7 @@ function formatWeightSummary(
 		.map((log) => `   - ${log.description}`)
 		.join("\n");
 
-	return `EOD Weight summary for the last 3 days:\n${formattedLogs}`;
+	return `Weight summary for the last ${summary.dailySummaries.length} days:\n${formattedLogs}`;
 }
 
 function localDateToTimestamp(
@@ -618,4 +611,9 @@ function localDateToTimestamp(
 		zone: tz,
 	});
 	return dateTime.toMillis();
+}
+
+function formatWeight(weight?: { value: number; units: string }) {
+	if (!weight) return "No data";
+	return `${weight.value} ${weight.units}`;
 }
