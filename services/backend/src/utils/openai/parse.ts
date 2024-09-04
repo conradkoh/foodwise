@@ -22,7 +22,7 @@ export const openAIParse = async <T extends z.ZodType>(p: {
 			{ role: "system", content: p.systemPrompt },
 			{ role: "user", content: p.text },
 		],
-		model: OpenAIModel.GPT_4o,
+		model: OpenAIModel.GPT_4o_mini,
 		temperature: 0,
 		response_format: {
 			type: "json_schema",
@@ -48,7 +48,7 @@ export const openAIParse = async <T extends z.ZodType>(p: {
 		throw new Error("OpenAI return a response with an invalid format.");
 	}
 
-	const usage = getUsage(OpenAIModel.GPT_4o, chatCompletion);
+	const usage = getUsage(OpenAIModel.GPT_4o_mini, chatCompletion);
 	return {
 		response: res,
 		usage,
