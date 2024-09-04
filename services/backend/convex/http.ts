@@ -191,12 +191,12 @@ http.route({
 
 				//Send a message to the user
 				await sendMessage(ctx, { chatId }, async (tg) => {
-					const responseText = [
-						response.value,
-						"\n------",
-						response.additionalMessages.join("\n\n"),
-					].join("\n");
-					return [tg.text(responseText).parseMode("HTML")];
+					const responseSegments = [response.value];
+					if (response.additionalMessages.length > 0) {
+						responseSegments.push("\n------");
+						responseSegments.push(response.additionalMessages.join("\n\n"));
+					}
+					return [tg.text(responseSegments.join("\n")).parseMode("HTML")];
 				});
 			} catch (error) {
 				console.error("failed to process message.", error);
