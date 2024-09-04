@@ -191,15 +191,13 @@ http.route({
 
 				//Send a message to the user
 				await sendMessage(ctx, { chatId }, async (tg) => {
-					return [tg.text(response.value).parseMode("HTML")];
+					const responseText = [
+						response.value,
+						"\n------",
+						response.additionalMessages.join("\n\n"),
+					].join("\n");
+					return [tg.text(responseText).parseMode("HTML")];
 				});
-
-				// send additional messages
-				for (const message of response.additionalMessages) {
-					await sendMessage(ctx, { chatId }, async (tg) => {
-						return [tg.text(message).parseMode("HTML")];
-					});
-				}
 			} catch (error) {
 				console.error("failed to process message.", error);
 			}
