@@ -29,7 +29,8 @@ Estimate the calories for the user's input. Provide a range (min and max) for ea
 Extract user's weight information if provided.
 
 ### ENUM: ${INTENTS.RECORD_MEALS_AND_CALORIES}
-Extract the items the user has eaten and put in estimated calorie information. Provide a range (min and max) for each item.
+Extract the items the user has eaten and put in estimated calorie information and quantity.
+Provide a range (min and max) for each item. Aim to be as precise as possible.
 
 ### ENUM: ${INTENTS.RECORD_ACTIVITIES_AND_BURN}
 Extract user's activity information and estimate calorie burn information if provided. Provide a range (min and max) for the calorie burn.

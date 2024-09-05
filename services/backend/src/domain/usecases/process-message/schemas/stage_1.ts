@@ -44,6 +44,7 @@ const mealAction = baseAction.extend({
 				min: z.number(), // .describe('The minimum estimated calorie content'),
 				max: z.number(), // .describe('The maximum estimated calorie content'),
 			}),
+			quantity: z.number().describe("The quantity of the item eaten"),
 		}),
 	),
 	forDate: z

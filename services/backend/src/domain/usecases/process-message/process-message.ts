@@ -248,7 +248,9 @@ async function handleRecordMealsAndCalories(
 	const totalCalories = action.items.reduce(
 		(state: { kcal: number }, item) => {
 			const average =
-				(item.estimatedCalories.min + item.estimatedCalories.max) / 2;
+				((item.estimatedCalories.min + item.estimatedCalories.max) *
+					item.quantity) /
+				2;
 			state.kcal += average;
 			return state;
 		},

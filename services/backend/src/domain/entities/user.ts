@@ -150,6 +150,7 @@ const userMeal_zodSchema = z.object({
 				max: z.number(),
 				units: z.literal("kcal"),
 			}),
+			quantity: z.number(),
 		}),
 	),
 	totalCalories: z.object({ value: z.number(), units: z.literal("kcal") }),
