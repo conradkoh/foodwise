@@ -344,9 +344,9 @@ function handleEstimateCalories(
 ) {
 	const totalCalories = action.items.reduce(
 		(state: { kcal: number }, item) => {
-			const average =
+			const averageEach =
 				(item.estimatedCalories.min + item.estimatedCalories.max) / 2;
-			state.kcal += average;
+			state.kcal += averageEach * item.quantity;
 			return state;
 		},
 		{ kcal: 0 },
