@@ -617,5 +617,5 @@ function localDateToTimestamp(
 
 function formatWeight(weight?: { value: number; units: string }) {
 	if (!weight) return "No data";
-	return `${weight.value} ${weight.units}`;
+	return `${weight.value.toFixed(2)} ${weight.units}`;
 }
