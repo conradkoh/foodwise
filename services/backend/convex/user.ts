@@ -7,6 +7,7 @@ import {
 	getUserBMR,
 	userActivity_convexSchema,
 	userMeal_convexSchema,
+	userMeal_convexSchema_v2,
 	userWeight_convexSchema,
 	user_convexSchema,
 } from "@/domain/entities/user";
@@ -71,7 +72,7 @@ export const _recordUserWeight = internalMutation({
 });
 
 export const _recordUserMealAndCalories = internalMutation({
-	args: userMeal_convexSchema,
+	args: userMeal_convexSchema_v2,
 	handler: async (ctx, args) => {
 		await ctx.db.insert("userMeal", args);
 	},

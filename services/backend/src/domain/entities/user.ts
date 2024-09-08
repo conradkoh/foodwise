@@ -139,24 +139,51 @@ export const userWeight_convexSchema = zodToConvex(userWeight_zodSchema);
 //========================================
 export type UserMeal = z.infer<typeof userMeal_zodSchema>;
 
-const userMeal_zodSchema = z.object({
+export const userMeal_zodSchema_v2 = z.object({
+	schemaVersion: z.literal("v2"),
 	userId: zid("user"),
 	items: z.array(
 		z.object({
 			name: z.string(),
-			estimatedCalories: z.object({
-				value: z.number(),
-				min: z.number(),
-				max: z.number(),
+			estimatedCaloriesPerPortion: z.object({
 				units: z.literal("kcal"),
+				min: z.number().describe("The minimum estimated calorie content"),
+				max: z.number().describe("The maximum estimated calorie content"),
 			}),
-			quantity: z.number(),
+			numPortions: z.number().describe("The number of portions eaten"),
 		}),
 	),
 	totalCalories: z.object({ value: z.number(), units: z.literal("kcal") }),
 	timestamp: z.number(),
 });
 
+//deprecated
+const userMeal_zodSchema = z.union([
+	// deprecated
+	z.object({
+		schemaVersion: z.literal("v1").optional(),
+		userId: zid("user"),
+		items: z.array(
+			z.object({
+				name: z.string(),
+				estimatedCalories: z.object({
+					units: z.literal("kcal"),
+					value: z.number(),
+					min: z.number(),
+					max: z.number(),
+				}),
+				quantity: z.number(),
+			}),
+		),
+		totalCalories: z.object({ value: z.number(), units: z.literal("kcal") }),
+		timestamp: z.number(),
+	}),
+	userMeal_zodSchema_v2,
+]);
+
+export const userMeal_convexSchema_v2 = zodToConvex(userMeal_zodSchema_v2);
+
+//deprecated
 export const userMeal_convexSchema = zodToConvex(userMeal_zodSchema);
 
 //========================================

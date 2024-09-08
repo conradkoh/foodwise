@@ -39,12 +39,12 @@ const mealAction = baseAction.extend({
 	items: z.array(
 		z.object({
 			name: z.string(),
-			estimatedCalories: z.object({
+			estimatedCaloriesPerPortion: z.object({
 				units: z.literal("kcal"),
-				min: z.number(), // .describe('The minimum estimated calorie content'),
-				max: z.number(), // .describe('The maximum estimated calorie content'),
+				min: z.number().describe("The minimum estimated calorie content"),
+				max: z.number().describe("The maximum estimated calorie content"),
 			}),
-			quantity: z.number().describe("The quantity of the item eaten"),
+			numPortions: z.number().describe("The number of portions eaten"),
 		}),
 	),
 	forDate: z

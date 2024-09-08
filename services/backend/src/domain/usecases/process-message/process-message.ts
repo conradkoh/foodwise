@@ -248,8 +248,9 @@ async function handleRecordMealsAndCalories(
 	const totalCalories = action.items.reduce(
 		(state: { kcal: number }, item) => {
 			const average =
-				((item.estimatedCalories.min + item.estimatedCalories.max) *
-					item.quantity) /
+				((item.estimatedCaloriesPerPortion.min +
+					item.estimatedCaloriesPerPortion.max) *
+					item.numPortions) /
 				2;
 			state.kcal += average;
 			return state;
@@ -258,20 +259,13 @@ async function handleRecordMealsAndCalories(
 	);
 	const timestamp = localDateToTimestamp(action.forDate, params.userTz);
 	await deps.recordUserMealAndCalories({
+		schemaVersion: "v2",
 		totalCalories: {
 			value: Math.round(totalCalories.kcal),
 			units: "kcal",
 		},
 		items: action.items.map((item) => ({
 			...item,
-			estimatedCalories: {
-				value: Math.round(
-					(item.estimatedCalories.min + item.estimatedCalories.max) / 2,
-				),
-				min: item.estimatedCalories.min,
-				max: item.estimatedCalories.max,
-				units: item.estimatedCalories.units,
-			},
 		})),
 		userId: params.userId,
 		timestamp,
