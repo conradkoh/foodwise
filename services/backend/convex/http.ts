@@ -7,6 +7,7 @@ import { DateTime } from "luxon";
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import type { BRAND } from "zod";
+import { createContainer } from "@/infra/container";
 
 const http = httpRouter();
 
@@ -66,31 +67,12 @@ http.route({
 				let usageMetrics: MessageUsageMetric[] | undefined = undefined;
 				const fetchedData: { name: string; input: any; output: any }[] = [];
 				try {
-					//process the message
-					const agentResponse = await processMessage({
-						recordUserWeight: bindMutation(
-							ctx,
-							internal.user._recordUserWeight,
-						),
-						setUserHeight: bindMutation(ctx, internal.user._setUserHeight),
-						setUserGender: bindMutation(ctx, internal.user._setUserGender),
-						setUserAge: bindMutation(ctx, internal.user._setUserAge),
-						recordUserMealAndCalories: bindMutation(
-							ctx,
-							internal.user._recordUserMealAndCalories,
-						),
-						recordActivityAndBurn: bindMutation(
-							ctx,
-							internal.user._recordActivityAndBurn,
-						),
-						setUserTimezone: bindMutation(ctx, internal.user._setUserTimezone),
+					//setup
+					const container = createContainer(ctx, (container) => ({
+						...container,
 						getUserTimezone: async () => user.timezone,
 						getLastNDaysSummary: async (args) => {
-							const queryFn = bindQuery(
-								ctx,
-								internal.user._getLastNDaysSummary,
-							);
-							const result = await queryFn(args);
+							const result = await container.getLastNDaysSummary(args);
 							fetchedData.push({
 								name: "getLastNDaysSummary",
 								input: args,
@@ -98,8 +80,9 @@ http.route({
 							});
 							return result;
 						},
-						getUserLatestState: bindQuery(ctx, internal.user._getUser),
-					})({
+					}));
+					//process the message
+					const agentResponse = await processMessage(container)({
 						userId: user._id,
 						inputText: message.message?.text,
 						userTz,

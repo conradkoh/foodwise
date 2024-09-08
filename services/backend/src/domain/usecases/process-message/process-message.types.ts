@@ -1,8 +1,7 @@
 import type { MessageUsageMetric } from "@/domain/entities/message";
 import type { Stage1Output } from "@/domain/usecases/process-message/schemas/stage_1";
 import type { Stage2Output } from "@/domain/usecases/process-message/schemas/stage_2";
-import type { BoundMutation, BoundQuery } from "@/utils/convex";
-import type { internal } from "convex/_generated/api";
+import type { Container } from "@/infra/container";
 import type { Id } from "convex/_generated/dataModel";
 import type { BRAND } from "zod";
 
@@ -39,19 +38,17 @@ export type ProcessMessageResult = {
 // Process Message Dependencies
 // =========================================
 
-export type ProcessMessageDeps = {
-	recordUserWeight: BoundMutation<typeof internal.user._recordUserWeight>;
-	recordUserMealAndCalories: BoundMutation<
-		typeof internal.user._recordUserMealAndCalories
-	>;
-	recordActivityAndBurn: BoundMutation<
-		typeof internal.user._recordActivityAndBurn
-	>;
+export type ProcessMessageDeps = Pick<
+	Container,
+	| "setUserAge"
+	| "setUserGender"
+	| "setUserHeight"
+	| "setUserTimezone"
+	| "recordUserWeight"
+	| "recordUserMealAndCalories"
+	| "recordActivityAndBurn"
+	| "getLastNDaysSummary"
+	| "getUserLatestState"
+> & {
 	getUserTimezone: () => Promise<string | undefined>;
-	setUserTimezone: BoundMutation<typeof internal.user._setUserTimezone>;
-	getLastNDaysSummary: BoundQuery<typeof internal.user._getLastNDaysSummary>;
-	setUserGender: BoundMutation<typeof internal.user._setUserGender>;
-	setUserAge: BoundMutation<typeof internal.user._setUserAge>;
-	setUserHeight: BoundMutation<typeof internal.user._setUserHeight>;
-	getUserLatestState: BoundQuery<typeof internal.user._getUser>;
 };
