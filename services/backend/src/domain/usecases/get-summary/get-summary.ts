@@ -27,7 +27,13 @@ const getLastNDaysSummary_output_zodSchema = z.union([
 		hasData: z.literal(true),
 		dailySummaries: z.array(dailySummary_zodSchema),
 		overview: z.object({
-			weightLost: z.optional(
+			earliestWeight: z.optional(
+				z.object({
+					value: z.number(),
+					units: z.literal("kg"),
+				}),
+			),
+			latestWeight: z.optional(
 				z.object({
 					value: z.number(),
 					units: z.literal("kg"),
@@ -134,21 +140,32 @@ function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
 	}
 
 	const overview: GetLastNDaysSummaryResult["overview"] = {};
-	if (firstDay.firstMorningWeight && lastDay.lastEveningWeight) {
-		if (lastDay.lastEveningWeight.units !== firstDay.firstMorningWeight.units) {
-			throw new Error("Weight units do not match");
-		}
-		const weightUnit = lastDay.lastEveningWeight.units;
-		const weightLost = {
-			value:
-				firstDay.firstMorningWeight.value - lastDay.lastEveningWeight.value,
-			units: weightUnit,
-		};
-		overview.weightLost = {
-			value: weightLost.value,
-			units: weightLost.units,
-		};
-	}
+
+	// order all measurements - first of day and last of day
+	const allWeightsOrdered = dailySummaries.reduce(
+		(state, day) => {
+			if (day.firstMorningWeight) {
+				state.push(day.firstMorningWeight);
+			}
+			if (day.lastEveningWeight) {
+				state.push(day.lastEveningWeight);
+			}
+			return state;
+		},
+		[] as { value: number; units: "kg" }[],
+	);
+
+	// set the overview earliest weight
+	overview.earliestWeight =
+		allWeightsOrdered.length > 0 ? allWeightsOrdered[0] : undefined;
+
+	// set the overview latest weight
+	overview.latestWeight =
+		allWeightsOrdered.length > 0
+			? allWeightsOrdered[allWeightsOrdered.length - 1]
+			: undefined;
+
+	// set the overview average calorie deficit
 	overview.averageCalorieDeficit = {
 		value: calorieStats.total / calorieStats.numDaysWithData,
 		units: seenCalorieUnit,

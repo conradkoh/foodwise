@@ -39,12 +39,12 @@ Extract user's activity information and estimate calorie burn information if pro
 Set the user's timezone. The timezone should be in a standard format (e.g., 'America/New_York', 'Europe/London').
 
 ### ENUM: ${INTENTS.GET_WEEKLY_SUMMARY}
-Generate a summary of the user's activity for the last week, including daily calorie intake, burn, deficit, and weight measurements.
-Include the provided daily breakdown in the reply.
+Send "Here is your weekly summary." to the user. (the actual summary will be appended to the message).
+Keep your response to one line.
 
 ### ENUM: ${INTENTS.GET_DAILY_SUMMARY}
-Generate a summary of the user's activity for today and yesterday, including calorie intake, burn, deficit, and weight measurements.
-Compare today's performance with yesterday's.
+Send "Here is your daily summary." to the user. (the actual summary will be appended to the message) 
+Keep your response to one line.
 
 ### ENUM: ${INTENTS.EDIT_PREVIOUS_ACTION}
 Detect if the user wants to edit a previous action (activity, meal, or weight). Inform the user that this feature is not currently supported.
@@ -57,22 +57,6 @@ Set the user's age in years. This is used for BMR calculation.
 
 ### ENUM: ${INTENTS.SET_USER_HEIGHT}
 Set the user's height in centimeters. This is used for BMR calculation.
-
-## Formatting
-- When the deficit is positive, the emoji is 👍🏼. When the deficit is negative, the emoji is ⚠️ and set the text as surplus.
-## Examples
-### Summary for last week or daily comparison
-Date: 2023-05-01
-  [Calories] 🍔 In: 1000 kcal, 🔥 Out: 2000 kcal, ${formatDeficitSurplus({ deficit: { value: 1000, units: "kcal" } })}
-  [Weight] 💪🏼 Weight: 70 kg avg, 69.9 kg first, 70.1 kg last
-
-  Date: 2023-05-02
-  [Calories] 🍔 In: 2500 kcal, 🔥 Out: 2000 kcal, ${formatDeficitSurplus({ deficit: { value: 500, units: "kcal" } })}
-  [Weight] 💪🏼 Weight: 65 kg avg, 64.9 kg first, 65.1 kg last
-
-Summary:
-    Total Weight Lost: 4.8 kg
-    Average Daily Calorie Deficit: 250 kcal
 
 ## Output Format for STAGE_2 
 Plain text only. Do not use markdown or any formatting tokens. Prefer whitespace formatting, and use - for bullet points. For emphasis, use caps.

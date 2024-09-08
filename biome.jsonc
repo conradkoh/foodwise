@@ -12,7 +12,8 @@
 			},
 			"style": {
 				"noUnusedTemplateLiteral": "off",
-				"useTemplate": "off"
+				"useTemplate": "off",
+				"noUselessElse": "off"
 			}
 		}
 	},

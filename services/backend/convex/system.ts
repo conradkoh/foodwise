@@ -56,7 +56,7 @@ export const usageReport = internalAction({
 				}
 				report += `\n  User: ${userName} (${userUsage.userId})`;
 				const costStr = userUsage.costs
-					.map((c) => `${c.currency}: ${c.value.toFixed(2)}`)
+					.map((c) => `${c.currency}: ${Number.parseFloat(c.value.toFixed(2))}`)
 					.join(", ");
 				report += `\n     - ${userUsage.context.messageCount} messages processed. Total cost: ${costStr}`;
 			}

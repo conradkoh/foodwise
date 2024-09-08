@@ -38,6 +38,12 @@ import {
 	endOfCurrentDay,
 	endOfDay,
 } from "@/domain/usecases/process-message/process-message.utils";
+import {
+	formatWeightDifference,
+	WEIGHT_SUMMARY_TEXT,
+} from "@/domain/usecases/process-message/messages/fragments/weight-summary";
+import { CALORIE_SUMMARY_TEXT } from "@/domain/usecases/process-message/messages/fragments/calorie-summary";
+import { DAY_OF_WEEK_FORMAT } from "@/domain/usecases/process-message/messages/format/date";
 
 export const processMessage: ProcessMessageFunc =
 	(deps) =>
@@ -386,7 +392,9 @@ async function handleGetWeeklySummary(
 		summary,
 		userTz: params.userTz,
 	});
-	resultBuilder.addActionTaken(summaryText);
+
+	resultBuilder.addActionTaken("Retrieved weekly summary");
+	resultBuilder.addAdditionalMessage(summaryText);
 }
 
 async function handleGetDailySummary(
@@ -406,7 +414,10 @@ async function handleGetDailySummary(
 		summary: last2DaySummary,
 		userTz: params.userTz,
 	});
-	resultBuilder.addActionTaken(summaryText);
+	resultBuilder.addActionTaken(
+		"Retrieved daily summary. Comparing with yesterday.",
+	);
+	resultBuilder.addAdditionalMessage(summaryText);
 }
 
 function handleEditPreviousAction(
@@ -508,8 +519,8 @@ async function getProgressUpdate(
 		return PROGRESS_UPDATE_TEXT({
 			date: summary.date,
 			dayOfWeek: summary.dayOfWeek,
-			caloriesIn: summary.caloriesIn?.value || 0,
-			caloriesOut: summary.caloriesOut?.value || 0,
+			caloriesIn: summary.caloriesIn,
+			caloriesOut: summary.caloriesOut,
 		});
 	}
 	return undefined;
@@ -520,71 +531,70 @@ function formatSummary(params: {
 	summary: GetLastNDaysSummaryResult;
 	userTz: string;
 }) {
-	const resultLines = [`${params.type} summary:\n\n`];
-
+	const resultLines = [];
 	for (const dailySummary of params.summary.dailySummaries) {
-		resultLines.push(`Date: ${dailySummary.date}`);
+		if (resultLines.length > 0) {
+			resultLines.push(""); // add a blank line between the summary for each day
+		}
+		resultLines.push(
+			`<b>📆 [${dailySummary.dayOfWeek}] ${dailySummary.date}</b>`,
+		);
 		if (!dailySummary.hasData) {
-			resultLines.push("  No data.");
+			resultLines.push("  No data");
 			continue;
 		}
-
-		if (dailySummary.caloriesIn) {
-			resultLines.push(
-				`  Calories In: ${dailySummary.caloriesIn.value} ${dailySummary.caloriesIn.units}`,
-			);
-		}
-		if (dailySummary.caloriesOut) {
-			resultLines.push(
-				`  Calories Out: ${dailySummary.caloriesOut.value} ${dailySummary.caloriesOut.units}`,
-			);
-		}
-		if (dailySummary.deficit) {
-			resultLines.push(formatDeficitSurplus({ deficit: dailySummary.deficit }));
-		}
-		if (dailySummary.weight) {
-			resultLines.push(
-				`  Weight: ${dailySummary.weight.value} ${dailySummary.weight.units}`,
-			);
-		}
-		if (dailySummary.firstMorningWeight) {
-			resultLines.push(
-				`  Morning Weight: ${dailySummary.firstMorningWeight.value} ${dailySummary.firstMorningWeight.units}`,
-			);
-		}
-		if (dailySummary.lastEveningWeight) {
-			resultLines.push(
-				`  Evening Weight: ${dailySummary.lastEveningWeight.value} ${dailySummary.lastEveningWeight.units}`,
-			);
-		}
-	}
-
-	// Summary across all days
-	resultLines.push(`Summary Across All Days:`);
-	if (params.summary.overview?.weightLost) {
 		resultLines.push(
-			`  Weight Lost: ${params.summary.overview.weightLost.value} ${params.summary.overview.weightLost.units}`,
+			"  [Calories] " +
+				formatDeficitSurplus({
+					mode: "by_calories",
+					caloriesIn: dailySummary.caloriesIn,
+					caloriesOut: dailySummary.caloriesOut,
+				}),
 		);
-	} else {
-		resultLines.push("  Weight Lost: No data");
-	}
-	if (params.summary.overview?.averageCalorieDeficit) {
 		resultLines.push(
-			`  Average Daily Calorie Deficit: ${params.summary.overview.averageCalorieDeficit.value.toFixed(2)} ${params.summary.overview.averageCalorieDeficit.units}`,
+			"  [Weight] " +
+				formatWeightDifference({
+					earlier: dailySummary.firstMorningWeight,
+					later: dailySummary.lastEveningWeight,
+					text: {
+						earlier: "morning",
+						later: "evening",
+					},
+				}),
 		);
 	}
-	return resultLines.join("\n");
+
+	const message = `
+${resultLines.join("\n")}
+
+🗒️ Summary Across All Days:
+  [Calories (Avg)] ${formatDeficitSurplus({ mode: "by_deficit", deficit: params.summary.overview?.averageCalorieDeficit })}
+  [Weight] ${formatWeightDifference({
+		earlier: params.summary.overview?.earliestWeight,
+		later: params.summary.overview?.latestWeight,
+		text: {
+			earlier: "earliest",
+			later: "latest",
+		},
+	})}
+`.trim();
+
+	return message;
 }
 
 function formatWeightSummary(
 	summary: GetLastNDaysSummaryResult,
 ): string | undefined {
 	const weightLogs = summary.dailySummaries.map((d) => {
-		const dayOfWeekStr = DateTime.fromISO(d.date).toFormat("ccc");
+		const dayOfWeekStr = DAY_OF_WEEK_FORMAT(DateTime.fromISO(d.date));
 		return {
 			date: d.date,
 			lastWeight: d.weight,
-			description: `<code>[${dayOfWeekStr}] ☀️ ${formatWeight(d.firstMorningWeight)} | 🌙 ${formatWeight(d.lastEveningWeight)}</code>`,
+			description: `${WEIGHT_SUMMARY_TEXT({
+				dayOfWeekStr,
+				firstMorningWeight: d.firstMorningWeight,
+				lastEveningWeight: d.lastEveningWeight,
+			})}`,
 		};
 	});
 
@@ -607,9 +617,4 @@ function localDateToTimestamp(
 		zone: tz,
 	});
 	return dateTime.toMillis();
-}
-
-function formatWeight(weight?: { value: number; units: string }) {
-	if (!weight) return "No data";
-	return `${weight.value.toFixed(2)} ${weight.units}`;
 }

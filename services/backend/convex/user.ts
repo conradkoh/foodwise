@@ -24,6 +24,10 @@ import {
 } from "./_generated/server";
 import type { BRAND } from "zod";
 import { filterByCategory } from "@/domain/entities/datetime";
+import {
+	DAY_OF_WEEK_FORMAT,
+	YMD_DATE_FORMAT,
+} from "@/domain/usecases/process-message/messages/format/date";
 
 export const _getTelegramUser = internalQuery({
 	args: {
@@ -299,8 +303,8 @@ function computeDailySummary(params: {
 		const date = DateTime.fromMillis(dayStart).setZone(userTz);
 		const summary: DailySummary = {
 			hasData: hasMealData || hasActivityData || hasWeightData,
-			date: date.toFormat("yyyy-MM-dd"),
-			dayOfWeek: date.toFormat("ccc") as string & BRAND<"format=ccc">,
+			date: YMD_DATE_FORMAT(date),
+			dayOfWeek: DAY_OF_WEEK_FORMAT(date),
 			dateTs: dayStart,
 		};
 		if (caloriesIn) {
