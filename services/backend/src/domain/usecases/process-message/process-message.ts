@@ -39,11 +39,12 @@ import {
 	endOfDay,
 } from "@/domain/usecases/process-message/process-message.utils";
 import {
+	formatWeight,
 	formatWeightDifference,
 	WEIGHT_SUMMARY_TEXT,
 } from "@/domain/usecases/process-message/messages/fragments/weight-summary";
-import { CALORIE_SUMMARY_TEXT } from "@/domain/usecases/process-message/messages/fragments/calorie-summary";
 import { DAY_OF_WEEK_FORMAT } from "@/domain/usecases/process-message/messages/format/date";
+import type { DailySummary } from "@/domain/entities/daily_summary";
 
 export const processMessage: ProcessMessageFunc =
 	(deps) =>
@@ -532,14 +533,17 @@ function formatSummary(params: {
 	userTz: string;
 }) {
 	const resultLines = [];
-	for (const dailySummary of params.summary.dailySummaries) {
+
+	// for (const dailySummary of params.summary.dailySummaries) {
+	for (let i = 0; i < params.summary.dailySummaries.length; i++) {
+		const daySummary = params.summary.dailySummaries[i] as DailySummary;
+		// derived
+		const previousDaySummary = params.summary.dailySummaries[i - 1];
 		if (resultLines.length > 0) {
 			resultLines.push(""); // add a blank line between the summary for each day
 		}
-		resultLines.push(
-			`<b>📆 [${dailySummary.dayOfWeek}] ${dailySummary.date}</b>`,
-		);
-		if (!dailySummary.hasData) {
+		resultLines.push(`<b>📆 [${daySummary.dayOfWeek}] ${daySummary.date}</b>`);
+		if (!daySummary.hasData) {
 			resultLines.push("  No data");
 			continue;
 		}
@@ -547,21 +551,72 @@ function formatSummary(params: {
 			"  [Calories] " +
 				formatDeficitSurplus({
 					mode: "by_calories",
-					caloriesIn: dailySummary.caloriesIn,
-					caloriesOut: dailySummary.caloriesOut,
+					caloriesIn: daySummary.caloriesIn,
+					caloriesOut: daySummary.caloriesOut,
 				}),
 		);
-		resultLines.push(
-			"  [Weight] " +
-				formatWeightDifference({
-					earlier: dailySummary.firstMorningWeight,
-					later: dailySummary.lastEveningWeight,
-					text: {
-						earlier: "morning",
-						later: "evening",
-					},
-				}),
-		);
+
+		// weight
+		// first record has no comparison
+		if (i === 0) {
+			const firstWeight = [
+				daySummary.firstMorningWeight,
+				daySummary.lastEveningWeight,
+			].filter(Boolean)[0];
+			if (firstWeight) {
+				resultLines.push(`  [Weight] Initial @ ${formatWeight(firstWeight)}`);
+			} else {
+				resultLines.push("  [Weight] No data");
+			}
+		}
+		// best: morning to morning
+		else if (
+			previousDaySummary?.firstMorningWeight &&
+			daySummary.firstMorningWeight
+		) {
+			resultLines.push(
+				"  [Weight M2M] " +
+					formatWeightDifference({
+						earlier: previousDaySummary?.firstMorningWeight,
+						later: daySummary.firstMorningWeight,
+						text: {
+							earlier: "prev morning",
+							later: "morning",
+						},
+					}),
+			);
+		}
+		// next best: evening to evening
+		else if (
+			previousDaySummary?.lastEveningWeight &&
+			daySummary.lastEveningWeight
+		) {
+			resultLines.push(
+				"  [Weight E2E] " +
+					formatWeightDifference({
+						earlier: previousDaySummary?.lastEveningWeight,
+						later: daySummary.lastEveningWeight,
+						text: {
+							earlier: "prev evening",
+							later: "evening",
+						},
+					}),
+			);
+		}
+		// last: morning to evening
+		else {
+			resultLines.push(
+				"  [Weight M2E] " +
+					formatWeightDifference({
+						earlier: daySummary?.firstMorningWeight,
+						later: daySummary.lastEveningWeight,
+						text: {
+							earlier: "morning",
+							later: "evening",
+						},
+					}),
+			);
+		}
 	}
 
 	const message = `

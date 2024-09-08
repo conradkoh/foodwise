@@ -113,6 +113,9 @@ function getOverviewFromDailySummaries(dailySummaries: DailySummary[]) {
 	// 1. weight loss
 	const firstDay = summariesWithData[0];
 	const lastDay = summariesWithData[summariesWithData.length - 1];
+	if (!firstDay || !lastDay) {
+		return {};
+	}
 	if (lastDay.dateTs < firstDay.dateTs) {
 		const msg = `getOverviewFromDailySummaries failed: lastDay.dateTs < firstDay.dateTs. lastDay.dateTs: ${lastDay.dateTs}, firstDay.dateTs: ${firstDay.dateTs}`;
 		throw new Error(msg);

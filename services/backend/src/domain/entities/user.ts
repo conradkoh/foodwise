@@ -157,7 +157,6 @@ export const userMeal_zodSchema = z.object({
 	timestamp: z.number(),
 });
 
-//deprecated
 export const userMeal_convexSchema = zodToConvex(userMeal_zodSchema);
 
 //========================================

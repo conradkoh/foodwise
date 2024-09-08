@@ -35,7 +35,7 @@ export const openAIParse = async <T extends z.ZodType>(p: {
 	});
 
 	// parse the response
-	const contentRaw = chatCompletion.choices[0].message.content;
+	const contentRaw = chatCompletion.choices[0]?.message?.content;
 	if (!contentRaw) throw new Error("Null response from OpenAI");
 	let res: z.infer<typeof schema> | undefined;
 	try {

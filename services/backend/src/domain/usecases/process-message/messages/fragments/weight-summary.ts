@@ -1,5 +1,4 @@
 import type { DayOfWeekFormattedString } from "@/domain/usecases/process-message/messages/format/date";
-import { a } from "vitest/dist/suite-IbNSsUWN.js";
 
 export const WEIGHT_SUMMARY_TEXT = (p: {
 	dayOfWeekStr?: DayOfWeekFormattedString;
@@ -48,12 +47,8 @@ export function formatWeightDifference(p: {
 		})} ${suffix} | ${formatWeight(p.earlier)} -> ${formatWeight(p.later)}`;
 	}
 
-	// only earlier is provided
-	if (p.earlier && !p.later) {
-		return `${p.text.earlier} @ ${formatWeight(p.earlier)}`;
-	}
 	// only later is provided
-	else if (!p.earlier && p.later) {
+	if (!p.earlier && p.later) {
 		return `${p.text.later} @ ${formatWeight(p.later)}`;
 	}
 	// neither earlier nor later is provided
