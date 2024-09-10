@@ -123,7 +123,6 @@ const processStage1 =
 				zod: stage1Output_zodSchema,
 			},
 		});
-
 		resultBuilder.setStage1Output(stage1Output);
 		resultBuilder.addUsageMetric(
 			formatOpenAIUsage(stage1Usage, "Stage 1 Usage"),
@@ -277,6 +276,14 @@ async function handleRecordMealsAndCalories(
 		userId: params.userId,
 		timestamp,
 	});
+
+	resultBuilder.addActionTaken(
+		`Estimated calories by items:
+\`\`\`
+${JSON.stringify(action.items, null, 2)}
+\`\`\`
+`.trim(),
+	);
 	resultBuilder.addActionTaken(
 		`Recorded meal with calories: (${Math.round(totalCalories.kcal)} kcal)`,
 	);

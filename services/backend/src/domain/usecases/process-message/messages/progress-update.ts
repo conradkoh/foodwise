@@ -6,8 +6,7 @@ export const PROGRESS_UPDATE_TEXT = (p: ProgressUpdateParams) => {
  - ${CALORIE_SUMMARY_TEXT({
 		caloriesIn: p.caloriesIn,
 		caloriesOut: p.caloriesOut,
- })},
- )}
+ })}
 `.trim();
 };
 
