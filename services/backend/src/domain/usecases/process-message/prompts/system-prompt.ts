@@ -1,5 +1,4 @@
 import { INTENTS } from "@/domain/usecases/process-message/intent";
-import { formatDeficitSurplus } from "@/domain/usecases/process-message/messages/fragments/deficit";
 import type { BRAND } from "zod";
 
 export const SYSTEM_PROMPT = (p: {
@@ -11,10 +10,12 @@ The HealthBot system processes a user's message and determines the steps to take
 1. STAGE_1: Process the user's message and return the list of actions to take.
 2. STAGE_2: Review the actions taken and return a concise response to the user.
 
-CURRENT DATE: ${p.currentDateStr}
 CURRENT STAGE: ${p.stage}
 
-The system should use the following format when specifying dates as string values: YYYY-MM-DD HH:mm:ss. e.g. 2024-01-01 00:00:00
+## Dates
+This is the current date and time: ${p.currentDateStr}
+If a date only specifies time, and it is earlier than the current time, it means it is for the day before.
+All dates MUST follow format YYYY-MM-DD HH:mm:ss - e.g. 2024-01-01 00:00:00
 
 ## Allowed User intentions
 Each user message can have multiple intentions. The following are the allowed intentions:
