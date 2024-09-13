@@ -27,6 +27,7 @@ import type {
 	ProcessMessageFunc,
 	ProcessMessageParams,
 	ProcessMessageResult,
+	ProcessMessageStage1Handler,
 } from "@/domain/usecases/process-message/process-message.types";
 import { SYSTEM_PROMPT } from "@/domain/usecases/process-message/prompts/system-prompt";
 import { DateTime } from "luxon";
@@ -45,6 +46,7 @@ import {
 } from "@/domain/usecases/process-message/messages/fragments/weight-summary";
 import { DAY_OF_WEEK_FORMAT } from "@/domain/usecases/process-message/messages/format/date";
 import type { DailySummary } from "@/domain/entities/daily_summary";
+import { formatUsage } from "@/infra/metrics/usage";
 
 export const processMessage: ProcessMessageFunc =
 	(deps) =>
@@ -125,7 +127,11 @@ const processStage1 =
 		});
 		resultBuilder.setStage1Output(stage1Output);
 		resultBuilder.addUsageMetric(
-			formatOpenAIUsage(stage1Usage, "Stage 1 Usage"),
+			formatUsage({
+				type: "openai",
+				data: stage1Usage,
+				title: "Stage 1 Usage",
+			}),
 		);
 
 		return { stage1Output, stage1Usage };
@@ -137,7 +143,7 @@ async function handleStage1Actions(
 	actions: Stage1Output["actions"],
 	resultBuilder: ProcessMessageResultBuilder,
 ) {
-	const actionHandlers = {
+	const actionHandlers: Record<string, ProcessMessageStage1Handler<any>> = {
 		[INTENTS.RECORD_WEIGHT]: handleRecordWeight,
 		[INTENTS.RECORD_MEALS_AND_CALORIES]: handleRecordMealsAndCalories,
 		[INTENTS.RECORD_ACTIVITIES_AND_BURN]: handleRecordActivitiesAndBurn,
@@ -157,7 +163,7 @@ async function handleStage1Actions(
 			const intent = action.intent;
 			const handler = actionHandlers[intent];
 			if (handler) {
-				await handler(deps, params, action as any, resultBuilder);
+				await handler({ deps, params, action, resultBuilder });
 			}
 		}),
 	);
@@ -198,7 +204,11 @@ const processStage2 =
 
 		resultBuilder.setStage2Output(stage2Output);
 		resultBuilder.addUsageMetric(
-			formatOpenAIUsage(stage2Usage, "Stage 2 Usage"),
+			formatUsage({
+				type: "openai",
+				data: stage2Usage,
+				title: "Stage 2 Usage",
+			}),
 		);
 
 		return { stage2Output, stage2Usage };
@@ -215,14 +225,14 @@ function handleError(
 		.build();
 }
 
-// Action handlers
-async function handleRecordWeight(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: WeightAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
-	const timestamp = localDateToTimestamp(action.forDate, params.userTz);
+const handleRecordWeight: ProcessMessageStage1Handler<WeightAction> = async ({
+	deps,
+	params,
+	action,
+	resultBuilder,
+}) => {
+	const { forDate } = await inferDate(deps, params, resultBuilder);
+	const timestamp = localDateToTimestamp(forDate, params.userTz);
 	await deps.recordUserWeight({
 		userId: params.userId,
 		weight: action.weight,
@@ -243,14 +253,11 @@ async function handleRecordWeight(
 	if (weightSummary) {
 		resultBuilder.addAdditionalMessage(weightSummary);
 	}
-}
+};
 
-async function handleRecordMealsAndCalories(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: MealAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleRecordMealsAndCalories: ProcessMessageStage1Handler<
+	MealAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	const totalCalories = action.items.reduce(
 		(state: { kcal: number }, item) => {
 			const average =
@@ -263,7 +270,8 @@ async function handleRecordMealsAndCalories(
 		},
 		{ kcal: 0 },
 	);
-	const timestamp = localDateToTimestamp(action.forDate, params.userTz);
+	const { forDate } = await inferDate(deps, params, resultBuilder);
+	const timestamp = localDateToTimestamp(forDate, params.userTz);
 	await deps.recordUserMealAndCalories({
 		schemaVersion: "v2",
 		totalCalories: {
@@ -297,18 +305,16 @@ ${JSON.stringify(action.items, null, 2)}
 	if (update) {
 		resultBuilder.addAdditionalMessage(update);
 	}
-}
+};
 
-async function handleRecordActivitiesAndBurn(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: ActivityAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleRecordActivitiesAndBurn: ProcessMessageStage1Handler<
+	ActivityAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	const averageCaloriesBurned =
 		(action.caloriesBurned.min + action.caloriesBurned.max) / 2;
 
-	const timestamp = localDateToTimestamp(action.forDate, params.userTz);
+	const { forDate } = await inferDate(deps, params, resultBuilder);
+	const timestamp = localDateToTimestamp(forDate, params.userTz);
 	await deps.recordActivityAndBurn({
 		activity: action.activity,
 		caloriesBurned: {
@@ -333,23 +339,17 @@ async function handleRecordActivitiesAndBurn(
 	if (update) {
 		resultBuilder.addAdditionalMessage(update);
 	}
-}
+};
 
-function handleGetGeneralAdvice(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: GeneralAdviceAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleGetGeneralAdvice: ProcessMessageStage1Handler<
+	GeneralAdviceAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	resultBuilder.addActionTaken(`Received advice: ${action.advice}`);
-}
+};
 
-function handleEstimateCalories(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: EstimateCaloriesAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleEstimateCalories: ProcessMessageStage1Handler<
+	EstimateCaloriesAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	const totalCalories = action.items.reduce(
 		(state: { kcal: number }, item) => {
 			const averageEach =
@@ -368,27 +368,21 @@ function handleEstimateCalories(
 			),
 		].join("\n"),
 	);
-}
+};
 
-async function handleSetTimezone(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: SetTimezoneAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleSetTimezone: ProcessMessageStage1Handler<
+	SetTimezoneAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	await deps.setUserTimezone({
 		timezone: action.timezone,
 		userId: params.userId,
 	});
 	resultBuilder.addActionTaken(`Set timezone: ${action.timezone}`);
-}
+};
 
-async function handleGetWeeklySummary(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: WeeklySummaryAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleGetWeeklySummary: ProcessMessageStage1Handler<
+	WeeklySummaryAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	const summary = await deps.getLastNDaysSummary({
 		numDays: 7,
 		userId: params.userId,
@@ -403,14 +397,11 @@ async function handleGetWeeklySummary(
 
 	resultBuilder.addActionTaken("Retrieved weekly summary");
 	resultBuilder.addAdditionalMessage(summaryText);
-}
+};
 
-async function handleGetDailySummary(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: DailySummaryAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleGetDailySummary: ProcessMessageStage1Handler<
+	DailySummaryAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	const last2DaySummary = await deps.getLastNDaysSummary({
 		numDays: 2,
 		userId: params.userId,
@@ -426,51 +417,42 @@ async function handleGetDailySummary(
 		"Retrieved daily summary. Comparing with yesterday.",
 	);
 	resultBuilder.addAdditionalMessage(summaryText);
-}
+};
 
-function handleEditPreviousAction(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: EditPreviousActionAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleEditPreviousAction: ProcessMessageStage1Handler<
+	EditPreviousActionAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	resultBuilder.addActionTaken(
 		"Editing previous actions is not currently supported. I apologize for the inconvenience.",
 	);
-}
+};
 
-async function handleSetUserGender(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: SetUserGenderAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleSetUserGender: ProcessMessageStage1Handler<
+	SetUserGenderAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	await deps.setUserGender({
 		userId: params.userId,
 		gender: action.gender,
 	});
 	resultBuilder.addActionTaken(`Set user gender: ${action.gender}`);
-}
+};
 
-async function handleSetUserAge(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: SetUserAgeAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleSetUserAge: ProcessMessageStage1Handler<SetUserAgeAction> = async ({
+	deps,
+	params,
+	action,
+	resultBuilder,
+}) => {
 	await deps.setUserAge({
 		userId: params.userId,
 		age: action.age,
 	});
 	resultBuilder.addActionTaken(`Set user age: ${action.age}`);
-}
+};
 
-async function handleSetUserHeight(
-	deps: ProcessMessageDeps,
-	params: ProcessMessageParams,
-	action: SetUserHeightAction,
-	resultBuilder: ProcessMessageResultBuilder,
-) {
+const handleSetUserHeight: ProcessMessageStage1Handler<
+	SetUserHeightAction
+> = async ({ deps, params, action, resultBuilder }) => {
 	await deps.setUserHeight({
 		userId: params.userId,
 		height: action.height,
@@ -478,31 +460,7 @@ async function handleSetUserHeight(
 	resultBuilder.addActionTaken(
 		`Set user height: ${action.height.value} ${action.height.units}`,
 	);
-}
-
-function formatOpenAIUsage(
-	usage: Awaited<ReturnType<typeof openAIParse>>["usage"],
-	title: string,
-): MessageUsageMetric {
-	return {
-		type: "openai",
-		title,
-		openAI: {
-			tokens: {
-				prompt: usage.tokens.prompt,
-				completion: usage.tokens.completion,
-				total: usage.tokens.total,
-			},
-			cost: {
-				currency: "USD",
-				total: usage.cost.total,
-				input: usage.cost.input,
-				output: usage.cost.output,
-			},
-		},
-	};
-}
-
+};
 /**
  * Gets the progress update for the given date
  * @param deps
@@ -533,6 +491,28 @@ async function getProgressUpdate(
 	}
 	return undefined;
 }
+
+/**
+ * Infers date and adds usage metric
+ * @param deps
+ * @param params
+ * @param resultBuilder
+ * @returns
+ */
+const inferDate = async (
+	deps: ProcessMessageDeps,
+	params: ProcessMessageParams,
+	resultBuilder: ProcessMessageResultBuilder,
+) => {
+	const { forDate, _usage } = await deps.inferDate({
+		currentDateStr: params.currentDateStr,
+		message: params.inputText,
+	});
+	resultBuilder.addUsageMetric(_usage);
+	return {
+		forDate,
+	};
+};
 
 function formatSummary(params: {
 	type: "weekly" | "daily";

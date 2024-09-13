@@ -13,8 +13,6 @@ The HealthBot system processes a user's message and determines the steps to take
 CURRENT STAGE: ${p.stage}
 
 ## Dates
-This is the current date and time: ${p.currentDateStr}
-If a date only specifies time, and it is earlier than the current time, it means it is for the day before.
 All dates MUST follow format YYYY-MM-DD HH:mm:ss - e.g. 2024-01-01 00:00:00
 
 ## Allowed User intentions

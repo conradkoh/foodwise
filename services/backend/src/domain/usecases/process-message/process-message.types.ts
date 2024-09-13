@@ -1,4 +1,5 @@
 import type { MessageUsageMetric } from "@/domain/entities/message";
+import type { ProcessMessageResultBuilder } from "@/domain/usecases/process-message/ProcessMessageResultBuilder";
 import type { Stage1Output } from "@/domain/usecases/process-message/schemas/stage_1";
 import type { Stage2Output } from "@/domain/usecases/process-message/schemas/stage_2";
 import type { Container } from "@/infra/container";
@@ -35,6 +36,17 @@ export type ProcessMessageResult = {
 };
 
 // =========================================
+// Process Message Stage 1 Handler
+// =========================================
+
+export type ProcessMessageStage1Handler<Action> = (p: {
+	deps: ProcessMessageDeps;
+	params: ProcessMessageParams;
+	action: Action;
+	resultBuilder: ProcessMessageResultBuilder;
+}) => Promise<void>;
+
+// =========================================
 // Process Message Dependencies
 // =========================================
 
@@ -49,6 +61,7 @@ export type ProcessMessageDeps = Pick<
 	| "recordActivityAndBurn"
 	| "getLastNDaysSummary"
 	| "getUserLatestState"
+	| "inferDate"
 > & {
 	getUserTimezone: () => Promise<string | undefined>;
 };

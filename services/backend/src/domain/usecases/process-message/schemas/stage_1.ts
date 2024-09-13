@@ -22,12 +22,12 @@ const weightAction = baseAction.extend({
 		value: z.number(), // .describe('The weight value'),
 		units: z.literal("kg"), // .describe('The unit of weight measurement'),
 	}),
-	forDate: z
-		.string()
-		.describe(
-			"The date for which the weight was recorded with format YYYY-MM-DD HH:mm:ss",
-		)
-		.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
+	// forDate: z
+	// 	.string()
+	// 	.describe(
+	// 		"The date for which the weight was recorded with format YYYY-MM-DD HH:mm:ss",
+	// 	)
+	// 	.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
 });
 
 export type MealAction = z.infer<typeof mealAction>;
@@ -47,12 +47,12 @@ const mealAction = baseAction.extend({
 			numPortions: z.number().describe("The number of portions eaten"),
 		}),
 	),
-	forDate: z
-		.string()
-		.describe(
-			"The date for which the meal was eaten with format YYYY-MM-DD HH:mm:ss",
-		)
-		.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
+	// forDate: z
+	// 	.string()
+	// 	.describe(
+	// 		"The date for which the meal was eaten with format YYYY-MM-DD HH:mm:ss",
+	// 	)
+	// 	.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
 });
 
 export type ActivityAction = z.infer<typeof activityAction>;
@@ -67,12 +67,12 @@ const activityAction = baseAction.extend({
 		min: z.number(), // .describe('The minimum estimated calorie content'),
 		max: z.number(), // .describe('The maximum estimated calorie content'),
 	}),
-	forDate: z
-		.string()
-		.describe(
-			"The date for which the activity was performed with format YYYY-MM-DD HH:mm:ss",
-		)
-		.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
+	// forDate: z
+	// 	.string()
+	// 	.describe(
+	// 		"The date for which the activity was performed with format YYYY-MM-DD HH:mm:ss",
+	// 	)
+	// 	.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
 });
 
 export type GeneralAdviceAction = z.infer<typeof generalAdviceAction>;
