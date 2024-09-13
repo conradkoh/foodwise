@@ -43,7 +43,7 @@ http.route({
 				const currentDateStr = DateTime.now()
 					.setZone(userTz)
 					.toFormat("dd MMM yyyy HH:mm") as string &
-					BRAND<`dateFormat=${typeof format}`>;
+					BRAND<`dateFormat=${typeof format} & tz=user`>;
 
 				// create user if not found
 				if (!user) {

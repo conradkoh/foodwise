@@ -2,7 +2,7 @@ import { INTENTS } from "@/domain/usecases/process-message/intent";
 import type { BRAND } from "zod";
 
 export const SYSTEM_PROMPT = (p: {
-	currentDateStr: string & BRAND<"dateFormat=dd MMM yyyy HH:mm">;
+	currentDateStr: string & BRAND<"dateFormat=dd MMM yyyy HH:mm & tz=user">;
 	stage: "STAGE_1" | "STAGE_2";
 }) => `
 # HealthBot Agent Overview
