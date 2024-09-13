@@ -9,19 +9,16 @@ import { DateTime } from "luxon";
  */
 export function filterByCategory<RecordType extends { timestamp: number }>(
 	rec: RecordType[],
-	category: "morning" | "afternoon" | "evening",
+	category: "morning" | "evening",
 	tz: string,
 ) {
 	const filteredRecords = rec.filter((record) => {
 		const date = DateTime.fromMillis(record.timestamp).setZone(tz);
 		const hour = date.get("hour");
-		if (hour >= 0 && hour < 8) {
+		if (hour >= 3 && hour < 15) {
 			return category === "morning";
 		}
-		if (hour >= 8 && hour < 16) {
-			return category === "afternoon";
-		}
-		if (hour >= 16 && hour < 24) {
+		if (hour >= 15 || (hour >= 0 && hour < 3)) {
 			return category === "evening";
 		}
 		return true;
