@@ -39,10 +39,10 @@ http.route({
 				});
 
 				const userTz = user?.timezone || "Asia/Singapore";
-				const format = "dd MMM yyyy HH:mm" as const;
+				const format = "yyyy-MM-dd HH:mm:ss" as const;
 				const currentDateStr = DateTime.now()
 					.setZone(userTz)
-					.toFormat("dd MMM yyyy HH:mm") as string &
+					.toFormat(format) as string &
 					BRAND<`dateFormat=${typeof format} & tz=user`>;
 
 				// create user if not found

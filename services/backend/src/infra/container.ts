@@ -1,9 +1,5 @@
 import type { MessageUsageMetric } from "@/domain/entities/message";
-import {
-	INFER_DATE_PROMPT,
-	inferDateReturn_zodSchema,
-} from "@/domain/usecases/process-message/prompts/infer-date";
-import { formatUsage } from "@/infra/metrics/usage";
+import { DateInferrer } from "@/domain/usecases/process-message/prompts/infer-date";
 import { bindMutation, bindQuery } from "@/utils/convex";
 import type { BoundMutation, BoundQuery } from "@/utils/convex";
 import { openAIParse } from "@/utils/openai";
@@ -37,7 +33,7 @@ export type Container = {
 };
 
 type InferDateParams = {
-	currentDateStr: string & BRAND<"dateFormat=dd MMM yyyy HH:mm & tz=user">;
+	currentDateStr: string & BRAND<"dateFormat=yyyy-MM-dd HH:mm:ss & tz=user">;
 	message: string;
 };
 
@@ -71,26 +67,9 @@ export const createContainer = <T extends Container>(
 
 		// ai
 		inferDate: async ({ message, currentDateStr }: InferDateParams) => {
-			const response = await openAIParse({
-				systemPrompt: INFER_DATE_PROMPT({
-					currentDateStr: currentDateStr,
-					message,
-				}),
-				text: message,
-				schema: {
-					name: "infer_date",
-					zod: inferDateReturn_zodSchema,
-				},
-			});
-			return {
-				forDate: response.response.data.date as string &
-					BRAND<"dateFormat=yyyy-MM-dd HH:mm:ss">,
-				_usage: formatUsage({
-					type: "openai",
-					data: response.usage,
-					title: "Infer Date",
-				}),
-			};
+			return new DateInferrer({
+				openAIParse,
+			}).inferDate({ message, currentDateStr });
 		},
 	};
 	if (!overrides) {

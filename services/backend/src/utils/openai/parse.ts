@@ -29,6 +29,9 @@ export const openAIParse = async <T extends z.ZodType>(p: {
 			json_schema: {
 				name: p.schema.name,
 				strict: true,
+
+				//NOTE: OpenAI does not support optional properties except via union types
+				// https://platform.openai.com/docs/guides/structured-outputs/supported-schemas
 				schema: zodToJsonSchema(schema),
 			},
 		},

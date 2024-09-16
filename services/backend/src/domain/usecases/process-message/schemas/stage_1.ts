@@ -25,7 +25,7 @@ const weightAction = baseAction.extend({
 	// forDate: z
 	// 	.string()
 	// 	.describe(
-	// 		"The date for which the weight was recorded with format YYYY-MM-DD HH:mm:ss",
+	// 		"The date for which the weight was recorded with format yyyy-MM-dd HH:mm:ss",
 	// 	)
 	// 	.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
 });
@@ -50,7 +50,7 @@ const mealAction = baseAction.extend({
 	// forDate: z
 	// 	.string()
 	// 	.describe(
-	// 		"The date for which the meal was eaten with format YYYY-MM-DD HH:mm:ss",
+	// 		"The date for which the meal was eaten with format yyyy-MM-dd HH:mm:ss",
 	// 	)
 	// 	.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
 });
@@ -70,7 +70,7 @@ const activityAction = baseAction.extend({
 	// forDate: z
 	// 	.string()
 	// 	.describe(
-	// 		"The date for which the activity was performed with format YYYY-MM-DD HH:mm:ss",
+	// 		"The date for which the activity was performed with format yyyy-MM-dd HH:mm:ss",
 	// 	)
 	// 	.brand("dateFormat=yyyy-MM-dd HH:mm:ss"),
 });

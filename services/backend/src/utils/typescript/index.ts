@@ -11,3 +11,9 @@ export type Exact<T, Shape> = T extends Shape
 		? T
 		: never
 	: never;
+
+/**
+ * Extracts the constructor as a function
+ */
+export type ConstructorOf<Class extends new (...args: any) => any> =
+	Class extends new (...args: infer P) => any ? P : never;

@@ -18,7 +18,7 @@ export type ProcessMessageParams = {
 	userId: Id<"user">;
 	inputText: string;
 	userTz: string;
-	currentDateStr: string & BRAND<"dateFormat=dd MMM yyyy HH:mm & tz=user">;
+	currentDateStr: string & BRAND<"dateFormat=yyyy-MM-dd HH:mm:ss & tz=user">;
 };
 // =========================================
 // Process Message Result

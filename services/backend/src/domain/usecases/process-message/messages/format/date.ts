@@ -2,7 +2,7 @@ import type { DateTime } from "luxon";
 import type { BRAND } from "zod";
 
 //===========================================
-// Date Format: YYYY-MM-DD
+// Date Format: yyyy-MM-dd
 //===========================================
 export const YMD_DATE_FORMAT_BRAND = "dateFormat=yyyy-MM-dd" as const;
 export type YMDDateFormattedString = string &
