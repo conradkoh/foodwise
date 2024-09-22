@@ -124,6 +124,9 @@ const processStage1 =
 				name: "user_health_information_stage_1",
 				zod: stage1Output_zodSchema,
 			},
+			options: {
+				refineTimes: 1,
+			},
 		});
 		resultBuilder.setStage1Output(stage1Output);
 		resultBuilder.addUsageMetric(

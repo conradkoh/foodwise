@@ -41,6 +41,45 @@ export function getUsage(
 		},
 	};
 }
+/**
+ * Takes an array of usage and aggregates them
+ * @param usage
+ * @returns
+ */
+export function aggregateUsage(
+	usage: OpenAICompletionUtilization[],
+): OpenAICompletionUtilization {
+	return usage.reduce(
+		(state, usage) => {
+			return {
+				tokens: {
+					prompt: state.tokens.prompt + usage.tokens.prompt,
+					completion: state.tokens.completion + usage.tokens.completion,
+					total: state.tokens.total + usage.tokens.total,
+				},
+				cost: {
+					currency: state.cost.currency,
+					total: state.cost.total + usage.cost.total,
+					input: state.cost.input + usage.cost.input,
+					output: state.cost.output + usage.cost.output,
+				},
+			};
+		},
+		{
+			tokens: {
+				prompt: 0,
+				completion: 0,
+				total: 0,
+			},
+			cost: {
+				currency: "USD",
+				total: 0,
+				input: 0,
+				output: 0,
+			},
+		},
+	);
+}
 
 //========================================
 // Types
